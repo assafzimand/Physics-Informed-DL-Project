@@ -1,0 +1,7 @@
+# Minimal requirements for wave simulation
+numpy>=1.24.0
+matplotlib>=3.7.0
+
+# Dataset generation requirements  
+h5py>=3.8.0
+tqdm>=4.65.0 
