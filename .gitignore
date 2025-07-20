@@ -19,3 +19,9 @@ build/
 # IDE/editor folders
 .vscode/
 .idea/
+
+# Data files (don't commit large datasets)
+data/*.h5
+data/*.hdf5
+*.pkl
+*.pickle
