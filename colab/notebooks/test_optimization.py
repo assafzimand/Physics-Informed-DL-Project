@@ -25,7 +25,7 @@ from datetime import datetime
 # Add project path to imports
 sys.path.append('/content/Physics-Informed-DL-Project')
 
-from src.training.trainer import WaveSourceTrainer
+from src.training.trainer import WaveTrainer
 from configs.training_config import TrainingConfig
 
 
@@ -98,7 +98,7 @@ def run_test_experiment():
     try:
         # Create config and trainer
         config = create_test_config()
-        trainer = WaveSourceTrainer(config)
+        trainer = WaveTrainer(config)
         
         print(f"\n📊 Dataset loaded - starting training...")
         
