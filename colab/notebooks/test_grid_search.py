@@ -48,7 +48,7 @@ def create_test_config(exp_data: Dict[str, Any]) -> TrainingConfig:
         # Minimal training for testing
         "num_epochs": 2,  # Just 2 epochs for testing!
         "device": "cuda",
-        "save_checkpoints": True,
+        "save_model_every_n_epochs": 10,  # Won't save with 2 epochs
         "early_stopping_patience": 5,  # Won't trigger with 2 epochs
         
         # From experiment
@@ -71,10 +71,7 @@ def create_test_config(exp_data: Dict[str, Any]) -> TrainingConfig:
         "pin_memory": True,
         
         # Scheduler params
-        "scheduler_params": {
-            "T_max": 2,  # Match epochs
-            "eta_min": 0.00001
-        }
+        "scheduler_patience": 5
     }
     
     return TrainingConfig(**config_dict)

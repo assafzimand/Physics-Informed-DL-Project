@@ -14,15 +14,13 @@ dataset_config:
 base_config:
   num_epochs: 50
   device: "cuda"
-  save_checkpoints: true
+  save_model_every_n_epochs: 10
   early_stopping_patience: 12
   
   # Fixed hyperparameters
   weight_decay: 0.01
-  scheduler_type: "cosine"
-  scheduler_params:
-    T_max: 50
-    eta_min: 0.00001
+  scheduler_type: "plateau"
+  scheduler_patience: 8
   
   # Model architecture (fixed)
   model_config:

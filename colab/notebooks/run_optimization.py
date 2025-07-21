@@ -58,7 +58,7 @@ def create_experiment_config(exp_data: Dict[str, Any],
         # From base config
         "num_epochs": base_config["num_epochs"],
         "device": base_config["device"],
-        "save_checkpoints": base_config["save_checkpoints"],
+        "save_model_every_n_epochs": 10,
         "early_stopping_patience": base_config["early_stopping_patience"],
         "weight_decay": base_config["weight_decay"],
         "scheduler_type": base_config["scheduler_type"],
@@ -81,7 +81,7 @@ def create_experiment_config(exp_data: Dict[str, Any],
         "pin_memory": True,
         
         # Scheduler params
-        "scheduler_params": base_config["scheduler_params"]
+        "scheduler_patience": 8
     }
     
     return TrainingConfig(**config_dict)
