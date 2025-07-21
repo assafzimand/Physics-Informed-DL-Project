@@ -80,7 +80,7 @@ def create_experiment_config(base_config, experiment_config):
     # Convert to TrainingConfig object
     training_config = TrainingConfig(
         dataset_name=merged_config.get('dataset_name', 'T500'),
-        dataset_path=merged_config.get('dataset_path', '/content/data/wave_dataset_T500.h5'),
+        dataset_path=merged_config.get('dataset_path', '/content/drive/MyDrive/Physics_Informed_DL_Project/datasets/wave_dataset_T500.h5'),
         batch_size=merged_config.get('batch_size', 32),
         learning_rate=merged_config.get('learning_rate', 0.001),
         num_epochs=merged_config.get('num_epochs', 75),

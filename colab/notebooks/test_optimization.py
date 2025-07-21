@@ -62,7 +62,7 @@ def create_test_config():
     """Create a quick test configuration."""
     config = TrainingConfig(
         dataset_name="T500",
-        dataset_path="/content/data/wave_dataset_T500.h5",
+        dataset_path="/content/drive/MyDrive/Physics_Informed_DL_Project/datasets/wave_dataset_T500.h5",
         batch_size=32,
         learning_rate=0.001,
         num_epochs=5,  # Quick test - just 5 epochs
