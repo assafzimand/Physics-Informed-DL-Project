@@ -1,71 +1,116 @@
 # Google Colab Infrastructure for Wave Source Localization
 
-This directory contains all scripts and notebooks needed to run experiments on Google Colab efficiently.
+## 🚀 Quick Start
+
+1. **Setup Environment** (run once per session):
+   ```python
+   # In Colab, run each cell:
+   !git clone https://github.com/your-username/Physics-Informed-DL-Project.git
+   %cd Physics-Informed-DL-Project
+   !python colab/setup/colab_setup.ipynb
+   ```
+
+2. **Run Grid Search Phase 1** (2×2×2 = 8 experiments):
+   ```python
+   !python colab/notebooks/run_optimization.py
+   ```
+
+3. **Download Results** (after experiments):
+   ```python
+   !python colab/mlflow/download_results.py
+   ```
+
+---
 
 ## 📁 Directory Structure
 
 ```
 colab/
-├── README.md                 # This file
 ├── setup/
-│   ├── colab_setup.ipynb    # Main setup notebook (START HERE)
-│   ├── install_deps.py      # Dependency installation script
-│   └── sync_codebase.py     # GitHub sync utilities
+│   └── colab_setup.ipynb          # Initial environment setup
 ├── data/
-│   ├── upload_dataset.py    # Upload local dataset to Drive
-│   ├── download_dataset.py  # Download dataset in Colab
-│   └── verify_data.py       # Data integrity verification
+│   └── upload_dataset.py          # Upload local dataset to Drive
 ├── experiments/
-│   ├── experiment_configs/  # YAML configs for experiments
-│   ├── run_experiments.py   # Automated experiment runner
-│   └── queue_manager.py     # Experiment queue management
+│   └── experiment_configs/
+│       └── resnet_optimization.yaml  # Grid search configuration
+├── notebooks/
+│   ├── test_optimization.py       # Quick test (5 epochs)
+│   └── run_optimization.py        # Full grid search (8 experiments)
 ├── mlflow/
-│   ├── setup_mlflow.py      # MLflow configuration for Colab
-│   ├── download_results.py  # Auto-download after each session
-│   └── sync_models.py       # Model synchronization utilities
-└── notebooks/
-    ├── quick_training.ipynb # Single experiment notebook
-    └── batch_training.ipynb# Multi-experiment notebook
+│   └── download_results.py        # Download results to local
+└── README.md                      # This file
 ```
 
-## 🚀 Quick Start Guide
+---
 
-### 1. **First Time Setup (5 minutes)**
-1. Open `setup/colab_setup.ipynb` in Google Colab
-2. Run all cells to set up environment
-3. Upload dataset using `data/upload_dataset.py` (one-time)
+## 🔬 Grid Search Phase 1
 
-### 2. **Running Experiments**
-1. Open `notebooks/batch_training.ipynb`
-2. Configure your experiments in the notebook
-3. Hit "Run All" - experiments will queue automatically
-4. Results auto-download at end of session
+**Configuration:** 2×2×2 Grid Search
+- **Learning Rate:** [0.001, 0.0001]
+- **Batch Size:** [16, 32] 
+- **Optimizer:** [Adam, AdamW]
+- **Fixed:** 50 epochs, weight_decay=0.01, cosine scheduler
 
-### 3. **Getting Results**
-- MLflow results: Auto-downloaded to `colab_results/mlruns/`
-- Best models: Auto-downloaded to `colab_results/models/`
-- Visualizations: Saved in `colab_results/plots/`
+**Expected Results:**
+- 8 experiments × 50 epochs = ~6 hours on L4 GPU
+- Best model will be identified for Phase 2 (5-fold CV)
 
-## 🎯 Experiment Strategy
+**Success Criteria:**
+- Target: < 3.0px distance error
+- Baseline to beat: 2.57px (from single model)
 
-**Target: 5-10 focused experiments to optimize ResNet**
+---
 
-**Phase 1**: Learning rate & optimizer optimization (2-3 experiments)
-**Phase 2**: Architecture improvements (2-3 experiments)  
-**Phase 3**: Training strategy refinement (2-3 experiments)
+## 📊 Experiment Flow
 
-## 🔧 Key Features
+### Phase 1: Grid Search (Current)
+```
+8 experiments → Best hyperparameters identified
+```
 
-- ✅ One-click environment setup
-- ✅ Automatic GitHub code sync
-- ✅ Persistent dataset storage on Drive
-- ✅ Auto-download results after each session
-- ✅ Experiment queuing with checkpoints
-- ✅ Progress monitoring and visualization
+### Phase 2: Rigorous Evaluation (Next)
+```
+Best config → 5-fold cross validation → Mean ± Std results
+```
 
-## 📞 Support
+### Phase 3: Failure Analysis (Future)
+```
+Best model → Analyze hardest cases → Understand limitations
+```
 
-If something breaks:
-1. Check the error logs in the notebook
-2. Restart runtime and re-run setup
-3. Verify Drive mount and file permissions 
+---
+
+## 💾 Data Management
+
+- **Dataset:** Auto-uploaded to Google Drive (wave_dataset_T500.h5)
+- **Results:** MLflow tracking + auto-sync to Drive after every 2 experiments
+- **Models:** Best checkpoints saved automatically
+- **Plots:** Learning curves and analysis plots generated
+
+---
+
+## 🔧 GPU Recommendations
+
+- **L4:** Best balance of performance/cost for this project
+- **A100:** Fastest but overkill for 50-epoch experiments  
+- **T4:** Adequate but slower
+
+---
+
+## 📈 Next Steps After Grid Search
+
+1. **Identify best hyperparameters** from 8 experiments
+2. **Run 5-fold cross validation** on winning combination
+3. **Report scientific results:** Distance Error: X.X ± Y.Y px
+4. **Failure analysis:** Which source positions are hardest?
+
+---
+
+## 🎯 Academic Requirements Addressed
+
+- ✅ **B.** Grid search + planned 5-fold CV for statistical rigor
+- ✅ **C.** Will report mean ± std (not single numbers)  
+- ✅ **F.** Failure analysis planned for best model
+- 🔄 **K.** Mathematical foundation analysis (future work)
+
+Ready to run in Colab! 🚀 
