@@ -21,14 +21,6 @@ base_config:
   weight_decay: 0.01
   scheduler_type: "plateau"
   scheduler_patience: 8
-  
-  # Model architecture (fixed)
-  model_config:
-    input_channels: 1
-    hidden_channels: [16, 32, 64]
-    kernel_sizes: [7, 5, 3]
-    num_residual_blocks: [2, 2, 2]
-    dropout_rate: 0.1
 
 # Grid Search Parameters (2x2x2 = 8 combinations)
 grid_search:

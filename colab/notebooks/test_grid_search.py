@@ -60,11 +60,7 @@ def create_test_config(exp_data: Dict[str, Any]) -> TrainingConfig:
         
         # Model architecture
         "model_name": "WaveSourceMiniResNet",
-        "input_channels": 1,
-        "hidden_channels": [16, 32, 64],
-        "kernel_sizes": [7, 5, 3],
-        "num_residual_blocks": [2, 2, 2],
-        "dropout_rate": 0.1,
+        "grid_size": 128,
         
         # Data loading
         "num_workers": 2,

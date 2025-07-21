@@ -70,11 +70,7 @@ def create_experiment_config(exp_data: Dict[str, Any],
         
         # Model architecture
         "model_name": "WaveSourceMiniResNet",
-        "input_channels": base_config["model_config"]["input_channels"],
-        "hidden_channels": base_config["model_config"]["hidden_channels"],
-        "kernel_sizes": base_config["model_config"]["kernel_sizes"],
-        "num_residual_blocks": base_config["model_config"]["num_residual_blocks"],
-        "dropout_rate": base_config["model_config"]["dropout_rate"],
+        "grid_size": 128,
         
         # Data loading
         "num_workers": 2,
