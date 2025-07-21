@@ -25,3 +25,11 @@ data/*.h5
 data/*.hdf5
 *.pkl
 *.pickle
+
+# MLflow - exclude model checkpoints but keep experiment metadata
+mlruns/*/models/*/artifacts/data/
+mlruns/*/.trash/
+
+# Model checkpoints (exclude large .pth files)
+models/*.pth
+ 

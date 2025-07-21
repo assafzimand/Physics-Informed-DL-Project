@@ -1,0 +1,11 @@
+artifact_location: file:///C:/Users/assaf/Desktop/Coding/Msc/Year 1/Semester 2/Physics
+  Informed DL Project/mlruns/245362020072499018/models/m-77b17f0652d04fda99bbe3a2ff9e51c4/artifacts
+creation_timestamp: 1753065737708
+experiment_id: '245362020072499018'
+last_updated_timestamp: 1753065771930
+model_id: m-77b17f0652d04fda99bbe3a2ff9e51c4
+model_type: null
+name: best_model
+source_run_id: e2b492d2bc5b47148f10dfee69d13e7c
+status: 2
+status_message: null
