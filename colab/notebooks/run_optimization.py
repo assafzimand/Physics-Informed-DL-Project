@@ -122,9 +122,9 @@ def run_single_experiment(experiment_name, experiment_config, base_config, resul
         # Train model
         best_metrics = trainer.train()
         
-        # Extract key results
-        val_loss = best_metrics.get('best_val_loss', float('inf'))
-        val_distance_error = best_metrics.get('val_distance_error', float('inf'))
+        # Extract key results from training history  
+        val_loss = best_metrics['val_loss'][-1] if best_metrics['val_loss'] else float('inf')
+        val_distance_error = best_metrics['val_distance_error'][-1] if best_metrics['val_distance_error'] else float('inf')
         training_time = time.time() - start_time
         
         # Save results

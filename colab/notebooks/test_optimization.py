@@ -105,9 +105,9 @@ def run_test_experiment():
         # Train model (5 epochs)
         best_metrics = trainer.train()
         
-        # Extract results
-        val_loss = best_metrics.get('best_val_loss', float('inf'))
-        val_distance_error = best_metrics.get('val_distance_error', float('inf'))
+        # Extract results from training history
+        val_loss = best_metrics['val_loss'][-1] if best_metrics['val_loss'] else float('inf')
+        val_distance_error = best_metrics['val_distance_error'][-1] if best_metrics['val_distance_error'] else float('inf')
         training_time = time.time() - start_time
         
         print(f"\n✅ Test Training Completed!")
