@@ -1,0 +1,139 @@
+# ResNet Optimization Experiment Configuration
+# Target: 5-10 focused experiments to maximize ResNet performance
+
+experiment_name: "resnet_optimization"
+description: "Systematic optimization of ResNet architecture for wave source localization"
+
+# Base configuration - all experiments inherit these settings
+base_config:
+  # Model
+  model_name: "WaveSourceMiniResNet"
+  grid_size: 128
+  
+  # Dataset  
+  dataset_name: "T500"
+  dataset_path: "/content/data/wave_dataset_T500.h5"
+  
+  # Training
+  num_epochs: 75  # Increased from 50 for better convergence
+  early_stopping_patience: 15
+  save_model_every_n_epochs: 25
+  
+  # Data loading
+  num_workers: 2  # Colab has 2 CPU cores
+  pin_memory: true
+  
+  # Splits (keep consistent)
+  train_split: 0.7
+  val_split: 0.15
+  test_split: 0.15
+  random_seed: 42
+
+# Experiments to run sequentially
+experiments:
+  
+  # Phase 1: Learning Rate Optimization (3 experiments)
+  - name: "lr_001"
+    description: "Baseline learning rate"
+    config:
+      learning_rate: 0.001
+      batch_size: 32
+      optimizer: "adam"
+      weight_decay: 0.0001
+      scheduler_type: "plateau"
+      scheduler_patience: 8
+      
+  - name: "lr_0001" 
+    description: "Lower learning rate for fine-tuning"
+    config:
+      learning_rate: 0.0001
+      batch_size: 32
+      optimizer: "adam"
+      weight_decay: 0.0001
+      scheduler_type: "plateau"
+      scheduler_patience: 8
+      
+  - name: "lr_01_cosine"
+    description: "Higher LR with cosine annealing"
+    config:
+      learning_rate: 0.01
+      batch_size: 32
+      optimizer: "adam"
+      weight_decay: 0.0001
+      scheduler_type: "cosine"
+      
+  # Phase 2: Optimizer & Regularization (2 experiments)  
+  - name: "adamw_heavy_reg"
+    description: "AdamW with strong regularization"
+    config:
+      learning_rate: 0.001
+      batch_size: 32
+      optimizer: "adamw"
+      weight_decay: 0.01  # 100x stronger
+      scheduler_type: "plateau"
+      scheduler_patience: 8
+      
+  - name: "sgd_momentum"
+    description: "SGD with momentum and warm restarts"
+    config:
+      learning_rate: 0.01
+      batch_size: 32
+      optimizer: "sgd"
+      weight_decay: 0.0001
+      momentum: 0.9
+      scheduler_type: "cosine"
+      
+  # Phase 3: Batch Size & Architecture (3 experiments)
+  - name: "large_batch"
+    description: "Larger batch size for stability"  
+    config:
+      learning_rate: 0.002  # Scale LR with batch size
+      batch_size: 64
+      optimizer: "adam"
+      weight_decay: 0.0001
+      scheduler_type: "plateau"
+      scheduler_patience: 10
+      
+  - name: "small_batch_fine"
+    description: "Small batch for fine gradient updates"
+    config:
+      learning_rate: 0.0005
+      batch_size: 16
+      optimizer: "adam"
+      weight_decay: 0.0001
+      scheduler_type: "plateau"
+      scheduler_patience: 6
+      
+  - name: "extended_training"
+    description: "Best config with extended training"
+    config:
+      learning_rate: 0.001  # Will update based on best from above
+      batch_size: 32
+      optimizer: "adam"
+      weight_decay: 0.0001
+      scheduler_type: "plateau"
+      scheduler_patience: 12
+      num_epochs: 150  # Double training time
+      early_stopping_patience: 25
+
+# Success criteria
+success_criteria:
+  target_val_distance_error: 2.0  # pixels
+  target_val_loss: 3.0
+  minimum_improvement: 0.1  # pixels better than baseline
+
+# Early stopping rules
+early_stop_rules:
+  - condition: "val_distance_error > 50"  # Clearly broken
+    action: "stop_experiment"
+  - condition: "val_loss > 100"  # Loss explosion
+    action: "stop_experiment"
+  - condition: "epoch > 20 and val_distance_error > 10"  # Not learning
+    action: "stop_experiment"
+    
+# Resource limits (Colab)
+resource_limits:
+  max_time_per_experiment: "2 hours"
+  max_total_time: "12 hours"
+  gpu_memory_limit: "15 GB"
+  disk_space_limit: "25 GB" 
