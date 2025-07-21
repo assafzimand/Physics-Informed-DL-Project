@@ -82,7 +82,9 @@ def create_experiment_config(exp_data: Dict[str, Any],
     
     return TrainingConfig(**config_dict)
 
-def run_single_experiment(exp_name: str, exp_data: Dict[str, Any], base_config: Dict[str, Any], dataset_path: str) -> Dict[str, float]:
+def run_single_experiment(exp_name: str, exp_data: Dict[str, Any], 
+                         base_config: Dict[str, Any], dataset_path: str, 
+                         experiment_name: str = "resnet_grid_search_phase1") -> Dict[str, float]:
     """Run a single experiment and return results"""
     
     print(f"\n🚀 Starting Experiment: {exp_name}")
@@ -93,45 +95,28 @@ def run_single_experiment(exp_name: str, exp_data: Dict[str, Any], base_config: 
     try:
         # Create config
         config = create_experiment_config(exp_data, base_config, dataset_path)
+        config.run_name = exp_name  # Set run name for MLflow
+        config.experiment_name = experiment_name  # Set experiment
         
-        # Start MLflow run
-        with mlflow.start_run(run_name=exp_name):
-            # Log experiment parameters
-            mlflow.log_params({
-                "learning_rate": exp_data["learning_rate"],
-                "batch_size": exp_data["batch_size"],
-                "optimizer": exp_data["optimizer"],
-                "num_epochs": base_config["num_epochs"],
-                "weight_decay": base_config["weight_decay"],
-                "scheduler_type": base_config["scheduler_type"]
-            })
-            
-            # Train model
-            trainer = WaveTrainer(config)
-            metrics = trainer.train()
-            
-            # Extract final metrics (get last values from lists)
-            final_val_loss = metrics['val_loss'][-1]
-            final_distance_error = metrics['val_distance_error'][-1]
-            final_train_loss = metrics['train_loss'][-1]
-            
-            # Log final metrics
-            mlflow.log_metrics({
-                "final_val_loss": final_val_loss,
-                "final_distance_error": final_distance_error,
-                "final_train_loss": final_train_loss
-            })
-            
-            elapsed = time.time() - start_time
-            print(f"   ✅ Completed in {elapsed/60:.1f} minutes")
-            print(f"   📊 Val Loss: {final_val_loss:.4f}, Distance Error: {final_distance_error:.2f} px")
-            
-            return {
-                "val_loss": final_val_loss,
-                "distance_error": final_distance_error,
-                "train_loss": final_train_loss,
-                "duration_minutes": elapsed / 60
-            }
+        # Train model (WaveTrainer handles MLflow internally)
+        trainer = WaveTrainer(config)
+        metrics = trainer.train()
+        
+        # Extract final metrics (get last values from lists)
+        final_val_loss = metrics['val_loss'][-1]
+        final_distance_error = metrics['val_distance_error'][-1]
+        final_train_loss = metrics['train_loss'][-1]
+        
+        elapsed = time.time() - start_time
+        print(f"   ✅ Completed in {elapsed/60:.1f} minutes")
+        print(f"   📊 Val Loss: {final_val_loss:.4f}, Distance Error: {final_distance_error:.2f} px")
+        
+        return {
+            "val_loss": final_val_loss,
+            "distance_error": final_distance_error,
+            "train_loss": final_train_loss,
+            "duration_minutes": elapsed / 60
+        }
             
     except Exception as e:
         elapsed = time.time() - start_time
@@ -239,7 +224,7 @@ def main():
         exp_name = experiment["name"]
         print(f"\n📍 Progress: {i+1}/8 experiments")
         
-        result = run_single_experiment(exp_name, experiment, base_config, dataset_path)
+        result = run_single_experiment(exp_name, experiment, base_config, dataset_path, experiment_name)
         result["experiment_name"] = exp_name
         results.append(result)
         

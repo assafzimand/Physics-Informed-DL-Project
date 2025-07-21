@@ -84,45 +84,29 @@ def run_test_experiment(exp_name: str, exp_data: Dict[str, Any]) -> Dict[str, fl
     try:
         # Create test config
         config = create_test_config(exp_data)
+        config.run_name = f"test_{exp_name}"  # Set run name for MLflow
+        config.experiment_name = "grid_search_pipeline_test"  # Set experiment
         
-        # Start MLflow run
-        with mlflow.start_run(run_name=f"test_{exp_name}"):
-            # Log experiment parameters
-            mlflow.log_params({
-                "learning_rate": exp_data["learning_rate"],
-                "batch_size": exp_data["batch_size"],
-                "optimizer": exp_data["optimizer"],
-                "num_epochs": 2,
-                "test_mode": True
-            })
-            
-            # Train model
-            trainer = WaveTrainer(config)
-            metrics = trainer.train()
-            
-            # Extract final metrics
-            final_val_loss = metrics['val_loss'][-1]
-            final_distance_error = metrics['val_distance_error'][-1]
-            final_train_loss = metrics['train_loss'][-1]
-            
-            # Log final metrics
-            mlflow.log_metrics({
-                "final_val_loss": final_val_loss,
-                "final_distance_error": final_distance_error,
-                "final_train_loss": final_train_loss
-            })
-            
-            elapsed = time.time() - start_time
-            print(f"   ✅ Completed in {elapsed/60:.1f} min")
-            print(f"   📊 Distance Error: {final_distance_error:.2f} px (2 epochs only)")
-            
-            return {
-                "val_loss": final_val_loss,
-                "distance_error": final_distance_error,
-                "train_loss": final_train_loss,
-                "duration_minutes": elapsed / 60,
-                "status": "success"
-            }
+        # Train model (WaveTrainer handles MLflow internally)
+        trainer = WaveTrainer(config)
+        metrics = trainer.train()
+        
+        # Extract final metrics
+        final_val_loss = metrics['val_loss'][-1]
+        final_distance_error = metrics['val_distance_error'][-1]
+        final_train_loss = metrics['train_loss'][-1]
+        
+        elapsed = time.time() - start_time
+        print(f"   ✅ Completed in {elapsed/60:.1f} min")
+        print(f"   📊 Distance Error: {final_distance_error:.2f} px (2 epochs only)")
+        
+        return {
+            "val_loss": final_val_loss,
+            "distance_error": final_distance_error,
+            "train_loss": final_train_loss,
+            "duration_minutes": elapsed / 60,
+            "status": "success"
+        }
             
     except Exception as e:
         elapsed = time.time() - start_time
