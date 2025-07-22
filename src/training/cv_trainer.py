@@ -106,13 +106,10 @@ class CrossValidationTrainer:
         print("📊 Loading full dataset for cross-validation...")
         
         dataset = WaveDataset(
-            dataset_path=self.config.dataset_path,
-            train_split=1.0,  # Use full dataset
-            val_split=0.0,
-            test_split=0.0,
-            random_seed=self.random_seed,
+            hdf5_path=self.config.dataset_path,
             normalize_wave_fields=True,
-            device=self.config.device
+            normalize_coordinates=False,
+            grid_size=self.config.grid_size
         )
         
         print(f"✅ Loaded {len(dataset)} samples for CV")
