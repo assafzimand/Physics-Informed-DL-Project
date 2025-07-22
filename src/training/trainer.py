@@ -60,6 +60,7 @@ class WaveTrainer:
         self.current_epoch = 0
         self.best_val_loss = float('inf')
         self.best_model_state = None
+        self.best_model_path = None
         self.training_history = {
             'train_loss': [],
             'val_loss': [],
@@ -364,6 +365,7 @@ class WaveTrainer:
         if is_best:
             path = self.config.get_model_save_path()
             torch.save(checkpoint, path)
+            self.best_model_path = path  # Store the best model path
             self.logger.info(f"⭐ Best model saved: {path}")
             
             # Log model to MLflow
