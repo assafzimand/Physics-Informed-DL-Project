@@ -26,10 +26,19 @@ data/*.hdf5
 *.pkl
 *.pickle
 
-# MLflow - exclude model checkpoints but keep experiment metadata
-mlruns/*/models/*/artifacts/data/
+# MLflow - exclude heavy model artifacts and checkpoints
+mlruns/*/models/
 mlruns/*/.trash/
+mlruns/*/artifacts/
+*/downloaded_mlruns/
+results/*/downloaded_mlruns/
 
-# Model checkpoints (exclude large .pth files)
+# Model checkpoints (exclude large .pth files from all locations)
 models/*.pth
+results/models/*.pth
+colab/models/*.pth
+*.pth
+
+# Large result files that can be regenerated
+results/grid_search_*/downloaded_*
  

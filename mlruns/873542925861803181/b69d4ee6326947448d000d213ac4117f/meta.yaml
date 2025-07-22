@@ -1,0 +1,14 @@
+artifact_uri: file:///content/Physics-Informed-DL-Project/Physics-Informed-DL-Project/Physics-Informed-DL-Project/Physics-Informed-DL-Project/Physics-Informed-DL-Project/Physics-Informed-DL-Project/Physics-Informed-DL-Project/Physics-Informed-DL-Project/mlruns/873542925861803181/b69d4ee6326947448d000d213ac4117f/artifacts
+end_time: 1753134166713
+entry_point_name: ''
+experiment_id: '873542925861803181'
+lifecycle_stage: active
+run_id: b69d4ee6326947448d000d213ac4117f
+run_name: exp_002_lr001_bs16_adamw
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1753131794506
+status: 3
+tags: []
+user_id: root

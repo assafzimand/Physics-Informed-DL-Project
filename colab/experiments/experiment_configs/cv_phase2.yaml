@@ -1,0 +1,69 @@
+# 5-Fold Cross-Validation - Phase 2
+# Using winning hyperparameters from grid search Phase 1
+
+experiment_name: "cv_phase2_5fold"
+description: "5-fold cross-validation with winning hyperparameters from grid search"
+
+# Dataset configuration  
+dataset_config:
+  dataset_path: "/content/drive/MyDrive/Physics_Informed_DL_Project/datasets/wave_dataset_T500.h5"
+
+# Winning configuration from grid search
+base_config:
+  # Grid search winner: lr0.001_bs32_adam (2.37px distance error)
+  learning_rate: 0.001
+  batch_size: 32
+  optimizer: "adam"
+  weight_decay: 0.01
+  
+  # CV-specific settings
+  k_folds: 5
+  random_seed: 42
+  
+  # Model architecture
+  model_name: "WaveSourceMiniResNet"
+  grid_size: 128
+  
+  # Training settings
+  device: "cuda"
+  num_workers: 2
+  pin_memory: true
+  
+  # Scheduler
+  scheduler_type: "plateau"
+  scheduler_patience: 10
+  
+  # Model saving
+  save_model_every_n_epochs: 25
+
+# Quick test configuration (10 epochs per fold = 50 epochs total)
+test_config:
+  num_epochs: 10
+  early_stopping_patience: 5
+  experiment_name: "cv_phase2_quick_test"
+  run_name: "cv_test_5fold_10epochs"
+  expected_time_minutes: 50
+
+# Full training configuration (75 epochs per fold = 375 epochs total)  
+full_config:
+  num_epochs: 75
+  early_stopping_patience: 15
+  experiment_name: "cv_phase2_full_training"
+  run_name: "cv_full_5fold_75epochs"
+  expected_time_minutes: 600  # ~10 hours
+
+# Auto-save configuration for Google Drive
+drive_sync:
+  enabled: true
+  sync_every_fold: true
+  backup_models: true
+  backup_results: true
+  drive_path: "/content/drive/MyDrive/Physics_Informed_DL_Project/results/cv_phase2"
+
+# Academic reporting requirements
+academic_settings:
+  calculate_confidence_intervals: true
+  confidence_level: 0.95
+  statistical_tests: ["t_test", "wilcoxon"]
+  save_individual_fold_results: true
+  generate_cv_plots: true 
