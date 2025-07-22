@@ -99,8 +99,16 @@ class WaveTrainer:
         mlflow.set_tracking_uri(self.config.mlflow_tracking_uri)
         mlflow.set_experiment(self.config.experiment_name)
         
-        # Start MLflow run
-        mlflow.start_run(run_name=self.config.run_name)
+        # Start MLflow run (use nested=True if there's already an active run)
+        active_run = mlflow.active_run()
+        if active_run is not None:
+            # There's already an active run, start a nested run
+            mlflow.start_run(run_name=self.config.run_name, nested=True)
+            self.logger.info(f"📈 Starting nested MLflow run: {self.config.run_name}")
+        else:
+            # No active run, start a new top-level run
+            mlflow.start_run(run_name=self.config.run_name)
+            self.logger.info(f"📈 Starting new MLflow run: {self.config.run_name}")
         
         # Log configuration
         mlflow.log_params(self.config.to_dict())
