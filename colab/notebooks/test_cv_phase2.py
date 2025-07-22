@@ -55,8 +55,9 @@ def load_config():
     # Create final config
     final_config = {**base_config, **test_config, **dataset_config}
     
-    # Extract k_folds before creating TrainingConfig (it doesn't accept this parameter)
+    # Extract CV-specific parameters that TrainingConfig doesn't accept
     k_folds = final_config.pop('k_folds', 5)
+    final_config.pop('expected_time_minutes', None)  # Remove but don't store
     
     print(f"🔧 Test Config Created:")
     print(f"   Epochs: {final_config['num_epochs']} per fold (total: {final_config['num_epochs'] * k_folds})")
