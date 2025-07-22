@@ -55,15 +55,18 @@ def load_config():
     # Create final config
     final_config = {**base_config, **test_config, **dataset_config}
     
+    # Extract k_folds before creating TrainingConfig (it doesn't accept this parameter)
+    k_folds = final_config.pop('k_folds', 5)
+    
     print(f"🔧 Test Config Created:")
-    print(f"   Epochs: {final_config['num_epochs']} per fold (total: {final_config['num_epochs'] * 5})")
-    print(f"   K-Folds: {final_config['k_folds']}")
+    print(f"   Epochs: {final_config['num_epochs']} per fold (total: {final_config['num_epochs'] * k_folds})")
+    print(f"   K-Folds: {k_folds}")
     print(f"   Batch size: {final_config['batch_size']}")
     print(f"   Learning rate: {final_config['learning_rate']}")
     print(f"   Optimizer: {final_config['optimizer']}")
     print(f"   Device: {final_config['device']}")
     
-    return TrainingConfig(**final_config)
+    return TrainingConfig(**final_config), k_folds
 
 
 def run_cv_test():
@@ -73,10 +76,10 @@ def run_cv_test():
     print("=" * 40)
     
     try:
-        config = load_config()
+        config, k_folds = load_config()
         
         # Create CV trainer
-        cv_trainer = CrossValidationTrainer(config, k_folds=5)
+        cv_trainer = CrossValidationTrainer(config, k_folds=k_folds)
         
         print("📊 Dataset loaded - starting cross-validation...")
         
