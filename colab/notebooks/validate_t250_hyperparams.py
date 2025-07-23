@@ -103,6 +103,7 @@ def create_validation_config(dataset_path):
         dataset_path=dataset_path,
         train_split=0.8,
         val_split=0.2,
+        test_split=0.0,  # No test split needed for validation
         
         # Training configuration - validation run
         num_epochs=50,  # Quick validation
