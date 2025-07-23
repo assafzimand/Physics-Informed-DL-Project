@@ -1,0 +1,53 @@
+{
+  "timestamp": "2025-07-23T16:11:25.299761",
+  "experiment_type": "T500_extra_validation",
+  "dataset": "wave_dataset_T500_validation.h5",
+  "model_info": {
+    "model_name": "cv_full_5fold_75epochs_fold_2_best.pth",
+    "fold": 2,
+    "note": "Best performing fold from CV results (fold 2)"
+  },
+  "statistics": {
+    "distance_error": {
+      "mean": 1.5560939311981201,
+      "std": 1.142106294631958,
+      "median": 1.276007890701294,
+      "min": 0.09664780646562576,
+      "max": 6.481374740600586,
+      "q25": 0.7403385639190674,
+      "q75": 2.0069870948791504
+    },
+    "x_error": {
+      "mean": -0.3034888505935669,
+      "std": 1.3523731231689453,
+      "median": -0.15666961669921875
+    },
+    "y_error": {
+      "mean": -0.3245173394680023,
+      "std": 1.3036504983901978,
+      "median": -0.21048927307128906
+    },
+    "normality_test": {
+      "test": "Shapiro-Wilk",
+      "statistic": 0.8586330856114446,
+      "p_value": 8.211408478557398e-21,
+      "is_normal": false
+    },
+    "confidence_interval_95": {
+      "lower": 1.455742339597384,
+      "upper": 1.6564455227988562,
+      "margin": 0.10035159160073596
+    },
+    "performance_thresholds": {
+      "under_1.0px": 37.2,
+      "under_2.0px": 74.4,
+      "under_3.0px": 90.2,
+      "under_5.0px": 97.2
+    }
+  },
+  "validation_config": {
+    "samples": 7,
+    "T_value": 500,
+    "validation_type": "dedicated_validation_dataset"
+  }
+}
