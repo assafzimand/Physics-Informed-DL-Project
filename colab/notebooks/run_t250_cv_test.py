@@ -165,11 +165,11 @@ def analyze_cv_results(cv_results, total_time):
     print(f"⏱️ Total Time: {total_time:.1f} minutes")
     print(f"📊 Test Results (2 epochs per fold):")
     
-    # Extract key metrics
-    mean_distance_error = cv_results['mean_distance_error']
-    std_distance_error = cv_results['std_distance_error']
-    mean_val_loss = cv_results['mean_val_loss']
-    std_val_loss = cv_results['std_val_loss']
+    # Extract key metrics (using correct CV trainer keys)
+    mean_distance_error = cv_results['distance_error_mean']
+    std_distance_error = cv_results['distance_error_std']
+    mean_val_loss = cv_results['val_loss_mean']
+    std_val_loss = cv_results['val_loss_std']
     
     print(f"   Mean Distance Error: {mean_distance_error:.3f} ± {std_distance_error:.3f} px")
     print(f"   Mean Val Loss: {mean_val_loss:.4f} ± {std_val_loss:.4f}")
