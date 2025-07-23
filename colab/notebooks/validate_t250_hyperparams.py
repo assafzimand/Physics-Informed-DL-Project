@@ -15,9 +15,10 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-# Add project paths (compatible with existing Colab setup)
-if '/content/drive/MyDrive/Physics_Informed_DL_Project' not in sys.path:
-    sys.path.append('/content/drive/MyDrive/Physics_Informed_DL_Project')
+# Add current project directory to Python path
+current_dir = os.getcwd()
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
 
 try:
     # Import project modules
