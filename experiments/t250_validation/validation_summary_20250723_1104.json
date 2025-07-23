@@ -1,0 +1,31 @@
+{
+  "timestamp": "2025-07-23T11:04:23.528152",
+  "experiment_type": "T250_hyperparameter_validation",
+  "dataset": "wave_dataset_T250.h5",
+  "hyperparameters": {
+    "learning_rate": 0.001,
+    "batch_size": 32,
+    "optimizer": "adam",
+    "weight_decay": 0.01
+  },
+  "training_config": {
+    "epochs": 50,
+    "early_stopping_patience": 15,
+    "model_name": "WaveSourceMiniResNet"
+  },
+  "results": {
+    "final_train_loss": 16.844923038482666,
+    "final_val_loss": 3.656309824723464,
+    "final_val_distance_error": 2.237012367982131,
+    "best_epoch": 50,
+    "training_duration": 46.6279939254125,
+    "recommendation": "\u2705 RECOMMENDED: Proceed with full 5-fold CV training"
+  },
+  "comparison": {
+    "t500_grid_search_best": 2.37,
+    "t500_cv_average": 2.078,
+    "t250_validation": 2.237012367982131
+  },
+  "mlflow_experiment_name": "t250_hyperparams_validation",
+  "mlflow_run_name": "validation_lr001_bs32_adam_50epochs_20250723_1017"
+}
