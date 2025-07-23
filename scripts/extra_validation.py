@@ -476,11 +476,11 @@ def main():
     
     # Define experiments to validate
     experiments = [
-        # {
-        #     'T_value': 250,
-        #     'experiment_dir': 'experiments/t250_cv_full',
-        #     'description': 'T=250 CV Full Training'
-        # },
+        {
+            'T_value': 250,
+            'experiment_dir': 'experiments/t250_cv_full',
+            'description': 'T=250 CV Full Training'
+        },
         {
             'T_value': 500,
             'experiment_dir': 'experiments/cv_full',

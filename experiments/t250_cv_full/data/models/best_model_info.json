@@ -1,0 +1,7 @@
+{
+  "best_fold": 1,
+  "distance_error": 1.4392441786252534,
+  "val_loss": 1.559627427504613,
+  "model_path": "/content/drive/MyDrive/Physics_Informed_DL_Project/experiments/t250_cv_full/results_20250723_1713/models/best_model.pt",
+  "timestamp": "2025-07-23T17:13:47.526603"
+}

@@ -1,0 +1,38 @@
+{
+  "timestamp": "20250723_2352",
+  "model_info": {
+    "model_name": "fold_1_model.pt",
+    "fold": 1,
+    "note": "Best performing fold from CV results (fold 1)"
+  },
+  "dataset_info": {
+    "dataset_path": "data/wave_dataset_T250_validation.h5",
+    "T_value": 250,
+    "num_samples": 500,
+    "description": "T=250 dedicated validation dataset (500 samples)"
+  },
+  "performance_metrics": {
+    "mean_distance_error": 1.4703755378723145,
+    "std_distance_error": 0.9393062591552734,
+    "median_distance_error": 1.2744898796081543,
+    "min_distance_error": 0.02042374201118946,
+    "max_distance_error": 5.366090297698975,
+    "percentile_25": 0.7891920804977417,
+    "percentile_75": 1.9075802564620972,
+    "percentile_95": 3.3693430423736572,
+    "percentile_99": 4.4969940185546875
+  },
+  "statistical_tests": {
+    "normality_test": {
+      "test": "Shapiro-Wilk",
+      "statistic": 0.9077162669229555,
+      "p_value": 7.398269805184643e-17,
+      "is_normal": false
+    }
+  },
+  "runtime_info": {
+    "inference_time_seconds": 23.460242986679077,
+    "samples_per_second": 21.31265222972772,
+    "device_used": "cpu"
+  }
+}

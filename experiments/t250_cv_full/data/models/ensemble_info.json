@@ -1,0 +1,29 @@
+{
+  "experiment_type": "T250_5fold_CV_full",
+  "num_folds": 5,
+  "fold_models": [
+    "fold_1_model.pt",
+    "fold_2_model.pt",
+    "fold_3_model.pt",
+    "fold_4_model.pt",
+    "fold_5_model.pt"
+  ],
+  "best_model": "best_model.pt",
+  "best_fold": 1,
+  "ensemble_performance": {
+    "mean_error": 1.7015796514657828,
+    "std_error": 0.20861660392012732,
+    "individual_errors": [
+      1.4392441786252534,
+      1.4802589141405547,
+      1.823627756192134,
+      1.7835765251746545,
+      1.9811908831963172
+    ]
+  },
+  "usage_instructions": {
+    "single_prediction": "Load best_model.pt for single predictions",
+    "ensemble_prediction": "Load all fold models for ensemble prediction",
+    "model_format": "PyTorch state_dict (.pt files)"
+  }
+}
