@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/assaf/Desktop/Coding/Msc/Year 1/Semester 2/Physics
+  Informed DL Project/mlruns/245362020072499018/dd24ed733bb74b64aff6e5ca850a88c3/artifacts
+end_time: 1753039598639
+entry_point_name: ''
+experiment_id: '245362020072499018'
+lifecycle_stage: active
+run_id: dd24ed733bb74b64aff6e5ca850a88c3
+run_name: grid_search_001_quick_search
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1753026951811
+status: 3
+tags: []
+user_id: assaf

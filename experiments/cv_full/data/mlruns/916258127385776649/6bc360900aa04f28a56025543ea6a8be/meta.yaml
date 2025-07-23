@@ -1,0 +1,14 @@
+artifact_uri: /content/Physics-Informed-DL-Project/mlruns/916258127385776649/6bc360900aa04f28a56025543ea6a8be/artifacts
+end_time: 1753208860063
+entry_point_name: ''
+experiment_id: '916258127385776649'
+lifecycle_stage: active
+run_id: 6bc360900aa04f28a56025543ea6a8be
+run_name: cv_full_5fold_75epochs_fold_5
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1753206646151
+status: 3
+tags: []
+user_id: root

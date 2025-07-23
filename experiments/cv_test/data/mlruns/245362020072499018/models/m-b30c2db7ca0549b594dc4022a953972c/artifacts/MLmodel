@@ -1,0 +1,24 @@
+artifact_path: file:///C:/Users/assaf/Desktop/Coding/Msc/Year 1/Semester 2/Physics
+  Informed DL Project/mlruns/245362020072499018/models/m-b30c2db7ca0549b594dc4022a953972c/artifacts
+flavors:
+  python_function:
+    config:
+      device: null
+    data: data
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pytorch
+    pickle_module_name: mlflow.pytorch.pickle_module
+    python_version: 3.10.0
+  pytorch:
+    code: null
+    model_data: data
+    pytorch_version: 2.7.1+cpu
+mlflow_version: 3.1.1
+model_id: m-b30c2db7ca0549b594dc4022a953972c
+model_size_bytes: 14372895
+model_uuid: m-b30c2db7ca0549b594dc4022a953972c
+prompts: null
+run_id: dd24ed733bb74b64aff6e5ca850a88c3
+utc_time_created: '2025-07-20 15:59:25.731717'

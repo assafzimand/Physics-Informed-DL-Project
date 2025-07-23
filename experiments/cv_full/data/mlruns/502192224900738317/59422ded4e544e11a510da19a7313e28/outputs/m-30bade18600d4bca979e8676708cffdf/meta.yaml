@@ -1,0 +1,6 @@
+destination_id: m-30bade18600d4bca979e8676708cffdf
+destination_type: MODEL_OUTPUT
+source_id: m-30bade18600d4bca979e8676708cffdf
+source_type: RUN_OUTPUT
+step: 0
+tags: {}

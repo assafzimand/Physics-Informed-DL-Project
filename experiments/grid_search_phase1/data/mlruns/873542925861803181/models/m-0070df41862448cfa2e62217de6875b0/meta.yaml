@@ -1,0 +1,10 @@
+artifact_location: file:///content/Physics-Informed-DL-Project/Physics-Informed-DL-Project/Physics-Informed-DL-Project/Physics-Informed-DL-Project/Physics-Informed-DL-Project/Physics-Informed-DL-Project/Physics-Informed-DL-Project/Physics-Informed-DL-Project/mlruns/873542925861803181/models/m-0070df41862448cfa2e62217de6875b0/artifacts
+creation_timestamp: 1753144892335
+experiment_id: '873542925861803181'
+last_updated_timestamp: 1753144896179
+model_id: m-0070df41862448cfa2e62217de6875b0
+model_type: null
+name: best_model
+source_run_id: 41780ddc4eb949e9bde755ad00771d43
+status: 2
+status_message: null

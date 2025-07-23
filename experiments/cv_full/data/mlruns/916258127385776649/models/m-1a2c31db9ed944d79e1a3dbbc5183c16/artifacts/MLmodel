@@ -1,0 +1,23 @@
+artifact_path: /content/Physics-Informed-DL-Project/mlruns/916258127385776649/models/m-1a2c31db9ed944d79e1a3dbbc5183c16/artifacts
+flavors:
+  python_function:
+    config:
+      device: null
+    data: data
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pytorch
+    pickle_module_name: mlflow.pytorch.pickle_module
+    python_version: 3.11.13
+  pytorch:
+    code: null
+    model_data: data
+    pytorch_version: 2.6.0+cu124
+mlflow_version: 3.1.1
+model_id: m-1a2c31db9ed944d79e1a3dbbc5183c16
+model_size_bytes: 15357718
+model_uuid: m-1a2c31db9ed944d79e1a3dbbc5183c16
+prompts: null
+run_id: 6bc360900aa04f28a56025543ea6a8be
+utc_time_created: '2025-07-22 17:51:45.919933'

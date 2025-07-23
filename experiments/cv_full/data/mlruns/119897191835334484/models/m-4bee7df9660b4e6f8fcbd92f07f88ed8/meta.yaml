@@ -1,0 +1,10 @@
+artifact_location: /content/Physics-Informed-DL-Project/mlruns/119897191835334484/models/m-4bee7df9660b4e6f8fcbd92f07f88ed8/artifacts
+creation_timestamp: 1753204798984
+experiment_id: '119897191835334484'
+last_updated_timestamp: 1753204802964
+model_id: m-4bee7df9660b4e6f8fcbd92f07f88ed8
+model_type: null
+name: best_model
+source_run_id: 40254d7cb10440a6bb1ddd7b4b661bda
+status: 2
+status_message: null
