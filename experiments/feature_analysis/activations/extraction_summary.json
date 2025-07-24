@@ -1,0 +1,274 @@
+{
+  "model_path": "experiments/cv_full/data/models/cv_full_5fold_75epochs_fold_2_best.pth",
+  "n_features_per_stage": 9,
+  "total_samples": 20,
+  "samples_processed": [
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_00_idx_17.npz",
+      "original_index": 17,
+      "category": "edge",
+      "true_coordinates": [
+        115.0,
+        25.0
+      ],
+      "predicted_coordinates": [
+        112.60945129394531,
+        25.494165420532227
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_01_idx_22.npz",
+      "original_index": 22,
+      "category": "center",
+      "true_coordinates": [
+        89.0,
+        20.0
+      ],
+      "predicted_coordinates": [
+        86.99298858642578,
+        18.505718231201172
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_02_idx_28.npz",
+      "original_index": 28,
+      "category": "center",
+      "true_coordinates": [
+        69.0,
+        42.0
+      ],
+      "predicted_coordinates": [
+        68.11942291259766,
+        42.425559997558594
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_03_idx_33.npz",
+      "original_index": 33,
+      "category": "edge",
+      "true_coordinates": [
+        115.0,
+        67.0
+      ],
+      "predicted_coordinates": [
+        114.9460220336914,
+        66.91983032226562
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_04_idx_46.npz",
+      "original_index": 46,
+      "category": "edge",
+      "true_coordinates": [
+        117.0,
+        80.0
+      ],
+      "predicted_coordinates": [
+        115.92876434326172,
+        79.14433288574219
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_05_idx_68.npz",
+      "original_index": 68,
+      "category": "edge",
+      "true_coordinates": [
+        21.0,
+        18.0
+      ],
+      "predicted_coordinates": [
+        21.61578941345215,
+        17.040157318115234
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_06_idx_81.npz",
+      "original_index": 81,
+      "category": "edge",
+      "true_coordinates": [
+        14.0,
+        73.0
+      ],
+      "predicted_coordinates": [
+        14.018352508544922,
+        72.75352478027344
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_07_idx_117.npz",
+      "original_index": 117,
+      "category": "edge",
+      "true_coordinates": [
+        112.0,
+        20.0
+      ],
+      "predicted_coordinates": [
+        109.09923553466797,
+        19.868833541870117
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_08_idx_125.npz",
+      "original_index": 125,
+      "category": "center",
+      "true_coordinates": [
+        83.0,
+        71.0
+      ],
+      "predicted_coordinates": [
+        81.5827865600586,
+        70.165771484375
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_09_idx_159.npz",
+      "original_index": 159,
+      "category": "center",
+      "true_coordinates": [
+        44.0,
+        84.0
+      ],
+      "predicted_coordinates": [
+        43.716529846191406,
+        83.4867935180664
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_10_idx_213.npz",
+      "original_index": 213,
+      "category": "edge",
+      "true_coordinates": [
+        16.0,
+        86.0
+      ],
+      "predicted_coordinates": [
+        16.649587631225586,
+        85.66107177734375
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_11_idx_230.npz",
+      "original_index": 230,
+      "category": "center",
+      "true_coordinates": [
+        54.0,
+        108.0
+      ],
+      "predicted_coordinates": [
+        54.675880432128906,
+        108.43185424804688
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_12_idx_286.npz",
+      "original_index": 286,
+      "category": "corner",
+      "true_coordinates": [
+        5.0,
+        112.0
+      ],
+      "predicted_coordinates": [
+        1.360135793685913,
+        111.96949005126953
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_13_idx_319.npz",
+      "original_index": 319,
+      "category": "corner",
+      "true_coordinates": [
+        17.0,
+        17.0
+      ],
+      "predicted_coordinates": [
+        17.80377197265625,
+        14.905335426330566
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_14_idx_338.npz",
+      "original_index": 338,
+      "category": "center",
+      "true_coordinates": [
+        22.0,
+        64.0
+      ],
+      "predicted_coordinates": [
+        22.96430015563965,
+        64.15953063964844
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_15_idx_425.npz",
+      "original_index": 425,
+      "category": "edge",
+      "true_coordinates": [
+        67.0,
+        123.0
+      ],
+      "predicted_coordinates": [
+        66.87097930908203,
+        122.42234802246094
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_16_idx_432.npz",
+      "original_index": 432,
+      "category": "corner",
+      "true_coordinates": [
+        14.0,
+        4.0
+      ],
+      "predicted_coordinates": [
+        13.910799026489258,
+        1.5671806335449219
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_17_idx_467.npz",
+      "original_index": 467,
+      "category": "edge",
+      "true_coordinates": [
+        12.0,
+        58.0
+      ],
+      "predicted_coordinates": [
+        11.766569137573242,
+        58.98772430419922
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_18_idx_468.npz",
+      "original_index": 468,
+      "category": "corner",
+      "true_coordinates": [
+        1.0,
+        112.0
+      ],
+      "predicted_coordinates": [
+        0.8093717098236084,
+        112.45982360839844
+      ]
+    },
+    {
+      "path": "experiments\\feature_analysis\\samples\\raw_data\\sample_19_idx_484.npz",
+      "original_index": 484,
+      "category": "center",
+      "true_coordinates": [
+        97.0,
+        36.0
+      ],
+      "predicted_coordinates": [
+        96.31584167480469,
+        36.09815979003906
+      ]
+    }
+  ],
+  "stage_info": {
+    "stage_0": "Initial wave pattern extraction (32 channels)",
+    "stage_1": "Basic wave features (32 channels)",
+    "stage_2": "Complex wave patterns (64 channels)",
+    "stage_3": "Interference patterns (128 channels)",
+    "stage_4": "Source localization (256 channels)"
+  }
+}

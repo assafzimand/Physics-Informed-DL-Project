@@ -1,0 +1,172 @@
+{
+  "total_samples": 20,
+  "source_dataset": "data/wave_dataset_T500_validation.h5",
+  "samples": [
+    {
+      "index": 17,
+      "coords": [
+        115.0,
+        25.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 22,
+      "coords": [
+        89.0,
+        20.0
+      ],
+      "category": "center"
+    },
+    {
+      "index": 28,
+      "coords": [
+        69.0,
+        42.0
+      ],
+      "category": "center"
+    },
+    {
+      "index": 33,
+      "coords": [
+        115.0,
+        67.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 46,
+      "coords": [
+        117.0,
+        80.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 68,
+      "coords": [
+        21.0,
+        18.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 81,
+      "coords": [
+        14.0,
+        73.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 117,
+      "coords": [
+        112.0,
+        20.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 125,
+      "coords": [
+        83.0,
+        71.0
+      ],
+      "category": "center"
+    },
+    {
+      "index": 159,
+      "coords": [
+        44.0,
+        84.0
+      ],
+      "category": "center"
+    },
+    {
+      "index": 213,
+      "coords": [
+        16.0,
+        86.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 230,
+      "coords": [
+        54.0,
+        108.0
+      ],
+      "category": "center"
+    },
+    {
+      "index": 286,
+      "coords": [
+        5.0,
+        112.0
+      ],
+      "category": "corner"
+    },
+    {
+      "index": 319,
+      "coords": [
+        17.0,
+        17.0
+      ],
+      "category": "corner"
+    },
+    {
+      "index": 338,
+      "coords": [
+        22.0,
+        64.0
+      ],
+      "category": "center"
+    },
+    {
+      "index": 425,
+      "coords": [
+        67.0,
+        123.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 432,
+      "coords": [
+        14.0,
+        4.0
+      ],
+      "category": "corner"
+    },
+    {
+      "index": 467,
+      "coords": [
+        12.0,
+        58.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 468,
+      "coords": [
+        1.0,
+        112.0
+      ],
+      "category": "corner"
+    },
+    {
+      "index": 484,
+      "coords": [
+        97.0,
+        36.0
+      ],
+      "category": "center"
+    }
+  ],
+  "selection_criteria": {
+    "corner_sources": "4 samples from grid corners",
+    "edge_sources": "8 samples from grid edges",
+    "center_sources": "4 samples from grid center",
+    "random_sources": "4 additional well-distributed samples"
+  }
+}
