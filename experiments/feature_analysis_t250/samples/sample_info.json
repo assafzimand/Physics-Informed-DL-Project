@@ -1,0 +1,167 @@
+{
+  "total_samples": 20,
+  "source_dataset": "data/wave_dataset_T250_validation.h5",
+  "samples": [
+    {
+      "index": 3,
+      "coords": [
+        64.0,
+        103.0
+      ],
+      "category": "center"
+    },
+    {
+      "index": 27,
+      "coords": [
+        32.0,
+        69.0
+      ],
+      "category": "center"
+    },
+    {
+      "index": 32,
+      "coords": [
+        93.0,
+        10.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 94,
+      "coords": [
+        39.0,
+        81.0
+      ],
+      "category": "center"
+    },
+    {
+      "index": 142,
+      "coords": [
+        15.0,
+        93.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 173,
+      "coords": [
+        100.0,
+        1.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 174,
+      "coords": [
+        111.0,
+        103.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 220,
+      "coords": [
+        87.0,
+        12.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 222,
+      "coords": [
+        125.0,
+        17.0
+      ],
+      "category": "corner"
+    },
+    {
+      "index": 267,
+      "coords": [
+        3.0,
+        53.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 268,
+      "coords": [
+        8.0,
+        24.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 276,
+      "coords": [
+        124.0,
+        81.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 281,
+      "coords": [
+        65.0,
+        66.0
+      ],
+      "category": "center"
+    },
+    {
+      "index": 283,
+      "coords": [
+        66.0,
+        16.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 312,
+      "coords": [
+        14.0,
+        111.0
+      ],
+      "category": "corner"
+    },
+    {
+      "index": 340,
+      "coords": [
+        5.0,
+        15.0
+      ],
+      "category": "corner"
+    },
+    {
+      "index": 394,
+      "coords": [
+        106.0,
+        84.0
+      ],
+      "category": "center"
+    },
+    {
+      "index": 401,
+      "coords": [
+        67.0,
+        25.0
+      ],
+      "category": "center"
+    },
+    {
+      "index": 423,
+      "coords": [
+        13.0,
+        105.0
+      ],
+      "category": "edge"
+    },
+    {
+      "index": 441,
+      "coords": [
+        2.0,
+        114.0
+      ],
+      "category": "corner"
+    }
+  ],
+  "dataset_type": "T=250"
+}

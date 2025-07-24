@@ -2,6 +2,7 @@
 """
 Comprehensive Feature Visualization for WaveSourceMiniResNet
 Shows original wave + all 9 strongest features from all 5 stages in one plot.
+WITH ORIGINAL COORDINATE MAPPING - shows where each feature maps back to in the input image.
 """
 
 import sys
@@ -88,7 +89,7 @@ def load_original_wave_data(sample_info):
 
 
 def create_comprehensive_visualization(sample_id, save_plot=True):
-    """Create comprehensive visualization: original wave + all 9 features from all 5 stages."""
+    """Create comprehensive visualization with original coordinate mapping."""
     
     # Load features and sample info
     features, sample_info = load_sample_features(sample_id, "experiments/feature_analysis/activations")
@@ -109,7 +110,6 @@ def create_comprehensive_visualization(sample_id, save_plot=True):
     pred_coords = sample_info['predicted_coordinates']
     
     # Create the comprehensive visualization
-    # Layout: 10 columns × 5 rows (50 panels total, but we'll use 46)
     fig = plt.figure(figsize=(30, 15))
     
     # Title with sample info
@@ -130,8 +130,6 @@ def create_comprehensive_visualization(sample_id, save_plot=True):
     }
     
     # Row 1: Original wave + Stage 0 features
-    row = 0
-    
     # Column 1: Original wave
     ax = plt.subplot(5, 10, 1)
     final_wave = wave_field[-1]  # Final timestep
@@ -170,9 +168,11 @@ def create_comprehensive_visualization(sample_id, save_plot=True):
                 
                 im = ax.imshow(feature_map, cmap='viridis', aspect='equal')
                 if feat_idx == 4:  # Middle feature - add stage title
-                    ax.set_title(f'{stage_info[0]}\nF#{filter_idx} @({peak_x},{peak_y})→({orig_x},{orig_y})', fontweight='bold', fontsize=10)
+                    ax.set_title(f'{stage_info[0]}\nF#{filter_idx} @({peak_x},{peak_y})→({orig_x},{orig_y})', 
+                                fontweight='bold', fontsize=9)
                 else:
-                    ax.set_title(f'F#{filter_idx} @({peak_x},{peak_y})→({orig_x},{orig_y})', fontweight='bold', fontsize=10)
+                    ax.set_title(f'F#{filter_idx} @({peak_x},{peak_y})→({orig_x},{orig_y})', 
+                                fontweight='bold', fontsize=9)
             else:
                 ax.axis('off')
             
@@ -193,7 +193,7 @@ def create_comprehensive_visualization(sample_id, save_plot=True):
             
             # All 10 columns for this stage's features
             for feat_idx in range(9):
-                col = feat_idx + 1  # Columns 1-9 (we use 1-10 but skip column 0 for stages 1-4)
+                col = feat_idx + 1  # Columns 1-9
                 panel_idx = row * 10 + col + 1  # Calculate subplot index
                 
                 ax = plt.subplot(5, 10, panel_idx)
@@ -211,9 +211,11 @@ def create_comprehensive_visualization(sample_id, save_plot=True):
                     im = ax.imshow(feature_map, cmap='viridis', aspect='equal')
                     
                     if feat_idx == 4:  # Middle feature - add stage title
-                        ax.set_title(f'{stage_info[stage]}\nF#{filter_idx} @({peak_x},{peak_y})→({orig_x},{orig_y})', fontweight='bold', fontsize=10)
+                        ax.set_title(f'{stage_info[stage]}\nF#{filter_idx} @({peak_x},{peak_y})→({orig_x},{orig_y})', 
+                                    fontweight='bold', fontsize=9)
                     else:
-                        ax.set_title(f'F#{filter_idx} @({peak_x},{peak_y})→({orig_x},{orig_y})', fontweight='bold', fontsize=10)
+                        ax.set_title(f'F#{filter_idx} @({peak_x},{peak_y})→({orig_x},{orig_y})', 
+                                    fontweight='bold', fontsize=9)
                     
                     plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
                 else:
@@ -230,22 +232,20 @@ def create_comprehensive_visualization(sample_id, save_plot=True):
     
     if save_plot:
         # Save plot
-        output_dir = Path("experiments/feature_analysis/plots/comprehensive_with_coords")
+        output_dir = Path("experiments/feature_analysis/plots/comprehensive_with_origins")
         output_dir.mkdir(parents=True, exist_ok=True)
         
         plot_file = output_dir / f"{sample_id}_comprehensive_features.png"
         plt.savefig(plot_file, dpi=300, bbox_inches='tight')
         print(f"✅ Comprehensive visualization saved: {plot_file}")
     
-    # Don't show the plot to avoid popup windows
-    plt.close()  # Close to free memory
-    
+    plt.close()
     return fig
 
 
 def main():
-    """Main function to create comprehensive feature visualization."""
-    print("🎨 Creating comprehensive feature visualization for all 20 samples...")
+    """Main function to create comprehensive feature visualization with origin mapping."""
+    print("🎨 Creating comprehensive feature visualization with original coordinate mapping...")
     
     # Get all sample IDs
     sample_ids = []
@@ -263,7 +263,7 @@ def main():
         create_comprehensive_visualization(sample_id, save_plot=True)
     
     print(f"\n🎉 All comprehensive visualizations complete!")
-    print(f"📁 Check plots in: experiments/feature_analysis/plots/comprehensive_with_coords/")
+    print(f"📁 Check plots in: experiments/feature_analysis/plots/comprehensive_with_origins/")
 
 
 if __name__ == "__main__":
