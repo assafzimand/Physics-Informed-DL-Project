@@ -24,7 +24,8 @@ def test_simple_activation_maximization():
     
     # Load best CV model
     print("🔍 Loading Best CV Model...")
-    model_info = find_best_cv_model()
+    cv_results_path = Path(__file__).parent.parent.parent / "experiments" / "cv_full"
+    model_info = find_best_cv_model(cv_results_path)
     if model_info is None:
         print("❌ No CV model found!")
         return
@@ -47,9 +48,9 @@ def test_simple_activation_maximization():
     print(f"✅ Model loaded: {sum(p.numel() for p in model.parameters()):,} parameters")
     
     # Test configuration
-    layer_path = "wave_feature_stage1.1.wave_feature_conv2"  # Early layer for clearer features
-    filter_idx = 10
-    iterations = 512
+    layer_path = "wave_input_processor.0"  # Very first conv layer that sees raw input
+    filter_idx = 5
+    iterations = 1024
     
     print(f"\n🎯 Test Configuration:")
     print(f"   • Layer: {layer_path}")

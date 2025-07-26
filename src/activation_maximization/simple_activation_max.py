@@ -32,7 +32,7 @@ class SimpleActivationMaximizer:
     def register_hook(self, layer_name: str, module):
         """Register forward hook on target layer"""
         def hook_fn(module, input, output):
-            self.activations[layer_name] = output.detach()
+            self.activations[layer_name] = output  # Keep gradients for activation maximization
             
         handle = module.register_forward_hook(hook_fn)
         self.hooks[layer_name] = handle
@@ -46,8 +46,8 @@ class SimpleActivationMaximizer:
     def optimize_filter(self, 
                        layer_name: str,
                        filter_idx: int,
-                       iterations: int = 512,
-                       learning_rate: float = 0.1,
+                       iterations: int = 1024,
+                       learning_rate: float = 0.01,
                        image_size: int = 128,
                        l2_weight: float = 1e-4,
                        total_variation_weight: float = 1e-2) -> Tuple[torch.Tensor, List[float]]:
@@ -82,6 +82,8 @@ class SimpleActivationMaximizer:
         optimizer = torch.optim.Adam([input_tensor], lr=learning_rate)
         
         loss_history = []
+        best_loss = float('inf')
+        best_input = None
         
         for i in range(iterations):
             optimizer.zero_grad()
@@ -98,16 +100,14 @@ class SimpleActivationMaximizer:
             # Primary loss: maximize filter activation (negative because we minimize)
             activation_loss = -target_activation.mean()
             
-            # Regularization losses
-            l2_loss = l2_weight * (input_tensor ** 2).mean()
+            # No regularization - focus purely on activation maximization
+            # l2_loss = l2_weight * (input_tensor ** 2).mean()
+            # grad_x = torch.gradient(input_tensor, dim=3)[0]  # Horizontal gradient ∂I/∂x
+            # grad_y = torch.gradient(input_tensor, dim=2)[0]  # Vertical gradient ∂I/∂y
+            # tv_loss = total_variation_weight * (grad_x**2 + grad_y**2).mean()
             
-            # Total variation loss (encourages smooth patterns)
-            tv_h = ((input_tensor[:, :, 1:, :] - input_tensor[:, :, :-1, :]) ** 2).mean()
-            tv_w = ((input_tensor[:, :, :, 1:] - input_tensor[:, :, :, :-1]) ** 2).mean()
-            tv_loss = total_variation_weight * (tv_h + tv_w)
-            
-            # Total loss
-            total_loss = activation_loss + l2_loss + tv_loss
+            # Total loss - just activation loss (no regularization)
+            total_loss = activation_loss
             
             # Backward pass
             total_loss.backward()
@@ -116,16 +116,23 @@ class SimpleActivationMaximizer:
             # Track loss
             loss_history.append(total_loss.item())
             
+            # Keep track of best result
+            if total_loss.item() < best_loss:
+                best_loss = total_loss.item()
+                best_input = input_tensor.detach().clone()
+            
             if i % 50 == 0:
                 activation_val = target_activation.mean().item()
                 print(f"   Step {i:3d}: Loss={total_loss.item():.4f}, "
-                      f"Activation={activation_val:.2f}")
+                      f"Activation={activation_val:.2f}, Best={best_loss:.4f}")
         
         print(f"✅ Optimization complete!")
         print(f"   Final activation: {target_activation.mean().item():.2f}")
-        print(f"   Loss reduction: {loss_history[0] - loss_history[-1]:.4f}")
+        print(f"   Best loss achieved: {best_loss:.4f}")
+        print(f"   Loss reduction: {loss_history[0] - best_loss:.4f}")
         
-        return input_tensor.detach(), loss_history
+        # Return the best input found during optimization
+        return best_input, loss_history
     
     def total_variation_loss(self, tensor):
         """Compute total variation loss for smoothness"""
