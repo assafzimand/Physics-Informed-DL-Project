@@ -4,10 +4,17 @@ Simple Activation Maximization for Single-Channel Wave Models
 
 This implementation bypasses Lucent's RGB assumptions and works directly
 with single-channel wave field inputs, ensuring proper gradient flow.
+
+Enhanced with comprehensive monitoring, plotting, and debugging capabilities.
 """
 
 import torch
-from typing import Tuple, List
+import matplotlib.pyplot as plt
+import numpy as np
+import h5py
+import random
+from pathlib import Path
+from typing import Tuple, List, Optional, Dict, Any
 
 
 class SimpleActivationMaximizer:
@@ -43,16 +50,38 @@ class SimpleActivationMaximizer:
             handle.remove()
         self.hooks.clear()
         
+    def load_real_wave_samples(self, dataset_path="data/wave_dataset_analysis_20samples.h5"):
+        """Load real wave samples for initialization"""
+        try:
+            with h5py.File(dataset_path, 'r') as f:
+                if 'wave_fields' in f and 'coordinates' in f:
+                    wave_fields = f['wave_fields'][:]
+                    coordinates = f['coordinates'][:]
+                    
+                    # Remove channel dimension if present
+                    if len(wave_fields.shape) == 4 and wave_fields.shape[1] == 1:
+                        wave_fields = wave_fields[:, 0]
+                    
+                    return wave_fields, coordinates
+                else:
+                    return None, None
+        except:
+            return None, None
+
     def optimize_filter(self, 
                        layer_name: str,
                        filter_idx: int,
-                       iterations: int = 1024,
+                       iterations: int = 512,
                        learning_rate: float = 0.01,
                        image_size: int = 128,
-                       l2_weight: float = 1e-4,
-                       total_variation_weight: float = 1e-2) -> Tuple[torch.Tensor, List[float]]:
+                       use_real_data_init: bool = True,
+                       skip_normalization: bool = False,
+                       save_intermediate: bool = True,
+                       save_every: int = 100,
+                       save_dir: Optional[str] = None,
+                       init_tensor: Optional[torch.Tensor] = None) -> Dict[str, Any]:
         """
-        Optimize input to maximize a specific filter's activation.
+        Comprehensive activation maximization with detailed monitoring and plotting.
         
         Args:
             layer_name: Name of target layer
@@ -60,79 +89,361 @@ class SimpleActivationMaximizer:
             iterations: Number of optimization steps
             learning_rate: Optimization learning rate
             image_size: Size of input image
-            l2_weight: L2 regularization weight
-            total_variation_weight: Total variation regularization weight
+            use_real_data_init: Initialize with real wave data instead of random
+            skip_normalization: Skip normalization step during optimization
+            save_intermediate: Save intermediate patterns during optimization
+            save_every: Save intermediate patterns every N iterations
+            save_dir: Directory to save plots (if None, uses default)
+            init_tensor: Specific tensor to use for initialization (overrides use_real_data_init)
             
         Returns:
-            Tuple of (optimized_input, loss_history)
+            Dictionary with comprehensive results including patterns, monitoring data, plots
         """
-        print(f"🎯 Optimizing {layer_name} filter {filter_idx}")
-        print(f"   Iterations: {iterations}, LR: {learning_rate}")
+        print(f"\n🎯 COMPREHENSIVE ACTIVATION MAXIMIZATION")
+        print("=" * 70)
+        print(f"🔍 Target: {layer_name} filter {filter_idx}")
+        print(f"📊 Config: {iterations} iterations, LR={learning_rate}")
+        print(f"🌊 Real data init: {'✅' if use_real_data_init else '❌'}")
+        print(f"📈 Skip normalization: {'✅' if skip_normalization else '❌'}")
         
-        # Initialize input tensor - single channel wave field
-        # Shape: [1, 1, height, width] - matches our model's expectation!
-        input_tensor = torch.randn(1, 1, image_size, image_size, 
-                                 requires_grad=True, device=self.device)
+        # Load real data if requested
+        wave_samples = None
+        if use_real_data_init and init_tensor is None:
+            wave_samples, _ = self.load_real_wave_samples()
+            if wave_samples is not None:
+                print(f"✅ Loaded {len(wave_samples)} real wave samples")
+            else:
+                print("❌ Failed to load real data, using random initialization")
         
-        # Apply training normalization
-        wave_mean = 0.000460
-        wave_std = 0.020842
+        # Initialize monitoring
+        monitoring_data = {
+            'iteration': [],
+            'loss': [],
+            'activation': [],
+            'input_mean': [],
+            'input_std': [],
+            'input_min': [],
+            'input_max': [],
+            'grad_magnitude': [],
+            'grad_mean': [],
+            'grad_std': [],
+            'intermediate_patterns': []
+        }
         
-        # Optimizer for the input tensor
+        # Initialize input tensor
+        if init_tensor is not None:
+            # Use provided initialization tensor
+            print(f"🎯 Using provided initialization tensor")
+            input_tensor = init_tensor.clone().detach().to(self.device)
+            input_tensor.requires_grad_(True)
+            initial_pattern = input_tensor.clone().detach()
+            print(f"📊 Init stats: mean={input_tensor.mean():.6f}, std={input_tensor.std():.6f}")
+        elif use_real_data_init and wave_samples is not None:
+            # Use random real sample
+            sample_idx = random.randint(0, len(wave_samples) - 1)
+            initial_sample = wave_samples[sample_idx]
+            print(f"🌊 Using real sample {sample_idx} as initialization")
+            print(f"📊 Sample stats: mean={initial_sample.mean():.6f}, std={initial_sample.std():.6f}")
+            
+            input_tensor = torch.from_numpy(initial_sample).float()
+            input_tensor = input_tensor.unsqueeze(0).unsqueeze(0).to(self.device)
+            input_tensor.requires_grad_(True)
+            initial_pattern = input_tensor.clone().detach()
+        else:
+            # Random initialization
+            print("🎲 Using random initialization")
+            input_tensor = torch.randn(1, 1, image_size, image_size, 
+                                     requires_grad=True, device=self.device)
+            initial_pattern = input_tensor.clone().detach()
+        
+        # Load proper normalization constants from the dataset
+        dataset_path = "data/wave_dataset_analysis_20samples.h5"
+        try:
+            import sys
+            from pathlib import Path as PathLib
+            sys.path.append(str(PathLib(__file__).parent.parent.parent))
+            from src.data.wave_dataset import WaveDataset
+            
+            # Create dataset to get normalization statistics
+            temp_dataset = WaveDataset(dataset_path, normalize_wave_fields=True)
+            wave_mean = temp_dataset.wave_mean
+            wave_std = temp_dataset.wave_std
+            print(f"📊 Using dataset normalization: mean={wave_mean:.6f}, std={wave_std:.6f}")
+        except:
+            # Fallback to hardcoded values if dataset loading fails
+            wave_mean = 0.000460
+            wave_std = 0.020842
+            print(f"⚠️ Using fallback normalization: mean={wave_mean:.6f}, std={wave_std:.6f}")
+        
+        # Optimizer
         optimizer = torch.optim.Adam([input_tensor], lr=learning_rate)
         
+        # Tracking variables
         loss_history = []
         best_loss = float('inf')
         best_input = None
         
+        print(f"\n🚀 Starting optimization...")
+        
+        # Main optimization loop
         for i in range(iterations):
             optimizer.zero_grad()
             
-            # Normalize input like during training
-            normalized_input = (input_tensor - wave_mean) / wave_std
+            # Forward pass with optional normalization
+            if skip_normalization:
+                model_input = input_tensor
+                print_norm_status = "RAW (no normalization)" if i == 0 else ""
+            else:
+                model_input = (input_tensor - wave_mean) / wave_std
+                print_norm_status = "NORMALIZED" if i == 0 else ""
+                
+            if print_norm_status:
+                print(f"📊 Input type: {print_norm_status}")
             
             # Forward pass
-            _ = self.model(normalized_input)
+            _ = self.model(model_input)
             
             # Get target activation
-            target_activation = self.activations[layer_name][0, filter_idx]
+            target_activation = self.activations[layer_name][:, filter_idx]
             
-            # Primary loss: maximize filter activation (negative because we minimize)
+            # Loss: maximize filter activation
             activation_loss = -target_activation.mean()
-            
-            # No regularization - focus purely on activation maximization
-            # l2_loss = l2_weight * (input_tensor ** 2).mean()
-            # grad_x = torch.gradient(input_tensor, dim=3)[0]  # Horizontal gradient ∂I/∂x
-            # grad_y = torch.gradient(input_tensor, dim=2)[0]  # Vertical gradient ∂I/∂y
-            # tv_loss = total_variation_weight * (grad_x**2 + grad_y**2).mean()
-            
-            # Total loss - just activation loss (no regularization)
             total_loss = activation_loss
             
             # Backward pass
             total_loss.backward()
-            optimizer.step()
             
-            # Track loss
-            loss_history.append(total_loss.item())
+            # Collect comprehensive monitoring data
+            with torch.no_grad():
+                grad_mag = input_tensor.grad.norm().item() if input_tensor.grad is not None else 0.0
+                grad_mean = input_tensor.grad.mean().item() if input_tensor.grad is not None else 0.0
+                grad_std = input_tensor.grad.std().item() if input_tensor.grad is not None else 0.0
+                
+                monitoring_data['iteration'].append(i)
+                monitoring_data['loss'].append(total_loss.item())
+                monitoring_data['activation'].append(-activation_loss.item())
+                monitoring_data['input_mean'].append(input_tensor.mean().item())
+                monitoring_data['input_std'].append(input_tensor.std().item())
+                monitoring_data['input_min'].append(input_tensor.min().item())
+                monitoring_data['input_max'].append(input_tensor.max().item())
+                monitoring_data['grad_magnitude'].append(grad_mag)
+                monitoring_data['grad_mean'].append(grad_mean)
+                monitoring_data['grad_std'].append(grad_std)
+                
+                # Save intermediate patterns
+                if save_intermediate and i % save_every == 0:
+                    pattern_copy = input_tensor.clone().detach()
+                    monitoring_data['intermediate_patterns'].append({
+                        'iteration': i,
+                        'pattern': pattern_copy,
+                        'activation': -activation_loss.item()
+                    })
             
-            # Keep track of best result
+            # Update best result
             if total_loss.item() < best_loss:
                 best_loss = total_loss.item()
-                best_input = input_tensor.detach().clone()
+                best_input = input_tensor.clone().detach()
             
-            if i % 50 == 0:
-                activation_val = target_activation.mean().item()
-                print(f"   Step {i:3d}: Loss={total_loss.item():.4f}, "
-                      f"Activation={activation_val:.2f}, Best={best_loss:.4f}")
+            # Optimize
+            optimizer.step()
+            
+            # Progress reporting
+            if i % 100 == 0 or i == iterations - 1:
+                print(f"   Step {i:4d}: Loss={total_loss.item():.4f}, "
+                      f"Activation={-activation_loss.item():.2f}, "
+                      f"GradMag={grad_mag:.6f}, "
+                      f"InputStd={input_tensor.std().item():.4f}")
         
-        print(f"✅ Optimization complete!")
-        print(f"   Final activation: {target_activation.mean().item():.2f}")
-        print(f"   Best loss achieved: {best_loss:.4f}")
-        print(f"   Loss reduction: {loss_history[0] - best_loss:.4f}")
+        print(f"\n✅ Optimization complete!")
+        final_activation = monitoring_data['activation'][-1]
+        loss_reduction = monitoring_data['loss'][0] - monitoring_data['loss'][-1]
+        avg_grad_mag = np.mean(monitoring_data['grad_magnitude'])
+        grad_variation = np.std(monitoring_data['grad_magnitude'])
         
-        # Return the best input found during optimization
-        return best_input, loss_history
+        print(f"📊 Final Results:")
+        print(f"   Final Activation: {final_activation:.2f}")
+        print(f"   Loss Reduction: {loss_reduction:.4f}")
+        print(f"   Average Gradient Magnitude: {avg_grad_mag:.6f}")
+        print(f"   Gradient Variation (std): {grad_variation:.6f}")
+        if grad_variation > 1e-6:
+            print(f"   ✅ GRADIENTS ARE VARYING! (std > 1e-6)")
+        else:
+            print(f"   ❌ Gradients are constant (std ≤ 1e-6)")
+        
+        # Create comprehensive results dictionary
+        results = {
+            'best_pattern': best_input,
+            'initial_pattern': initial_pattern,
+            'monitoring_data': monitoring_data,
+            'config': {
+                'layer_name': layer_name,
+                'filter_idx': filter_idx,
+                'iterations': iterations,
+                'learning_rate': learning_rate,
+                'use_real_data_init': use_real_data_init,
+                'skip_normalization': skip_normalization,
+                'final_activation': final_activation,
+                'loss_reduction': loss_reduction,
+                'grad_variation': grad_variation
+            }
+        }
+        
+        # ALWAYS create comprehensive plots and analysis
+        plot_path = self.create_comprehensive_plots(results, save_dir)
+        results['plot_path'] = plot_path
+        
+        return results
+
+    def create_comprehensive_plots(self, results: Dict[str, Any], save_dir: Optional[str] = None):
+        """Create comprehensive visualization plots"""
+        if save_dir is None:
+            save_dir = Path("experiments/activation_maximization/comprehensive")
+        else:
+            save_dir = Path(save_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
+        
+        monitoring_data = results['monitoring_data']
+        config = results['config']
+        
+        # Create main figure with multiple panels - 3 rows for 500 iterations
+        fig = plt.figure(figsize=(20, 15))
+        
+        # Get normalization statistics for proper visualization
+        dataset_path = "data/wave_dataset_analysis_20samples.h5"
+        try:
+            import sys
+            from pathlib import Path as PathLib
+            sys.path.append(str(PathLib(__file__).parent.parent.parent))
+            from src.data.wave_dataset import WaveDataset
+            temp_dataset = WaveDataset(dataset_path, normalize_wave_fields=True)
+            wave_mean = temp_dataset.wave_mean
+            wave_std = temp_dataset.wave_std
+        except:
+            wave_mean = 0.000460
+            wave_std = 0.020842
+
+        # Panel 1: Initial vs Final patterns (in model input space)
+        ax1 = plt.subplot(3, 4, 1)
+        initial_raw = results['initial_pattern'][0, 0].cpu().numpy()
+        # Show normalized version that model actually sees
+        initial_normalized = (initial_raw - wave_mean) / wave_std if not config['skip_normalization'] else initial_raw
+        im1 = ax1.imshow(initial_normalized, cmap='RdBu_r', interpolation='nearest')
+        ax1.set_title('Initial Pattern\n(Model Input Space)', fontweight='bold')
+        ax1.set_xticks([])
+        ax1.set_yticks([])
+        plt.colorbar(im1, ax=ax1, fraction=0.046, pad=0.04)
+        
+        ax2 = plt.subplot(3, 4, 2)
+        final_raw = results['best_pattern'][0, 0].cpu().numpy()
+        # Show normalized version that model actually sees
+        final_normalized = (final_raw - wave_mean) / wave_std if not config['skip_normalization'] else final_raw
+        im2 = ax2.imshow(final_normalized, cmap='RdBu_r', interpolation='nearest')
+        ax2.set_title('Final Optimized Pattern\n(Model Input Space)', fontweight='bold')
+        ax2.set_xticks([])
+        ax2.set_yticks([])
+        plt.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
+        
+        # Panel 2: Evolution timeline - 6 steps for 500 iterations (every 100)
+        evolution_data = monitoring_data['intermediate_patterns']
+        num_steps = min(6, len(evolution_data))
+        
+        for i in range(num_steps):
+            ax = plt.subplot(3, 6, 7 + i)
+            if i < len(evolution_data):
+                step_data = evolution_data[i]
+                pattern_raw = step_data['pattern'][0, 0].cpu().numpy()
+                # Show normalized version that model actually sees
+                pattern_normalized = (pattern_raw - wave_mean) / wave_std if not config['skip_normalization'] else pattern_raw
+                
+                im = ax.imshow(pattern_normalized, cmap='RdBu_r', interpolation='nearest')
+                ax.set_title(f"Step {step_data['iteration']}\nAct: {step_data['activation']:.1f}", 
+                           fontsize=9, fontweight='bold')
+                ax.set_xticks([])
+                ax.set_yticks([])
+        
+        # Panel 3: Loss and activation curves
+        ax3 = plt.subplot(3, 4, 9)
+        iterations = monitoring_data['iteration']
+        losses = monitoring_data['loss']
+        activations = monitoring_data['activation']
+        
+        ax3.plot(iterations, losses, 'b-', label='Loss', linewidth=2)
+        ax3.set_xlabel('Iteration')
+        ax3.set_ylabel('Loss', color='b')
+        ax3.tick_params(axis='y', labelcolor='b')
+        ax3.grid(True, alpha=0.3)
+        
+        ax3_twin = ax3.twinx()
+        ax3_twin.plot(iterations, activations, 'r-', label='Activation', linewidth=2)
+        ax3_twin.set_ylabel('Activation', color='r')
+        ax3_twin.tick_params(axis='y', labelcolor='r')
+        
+        ax3.set_title('Optimization Progress', fontweight='bold')
+        
+        # Panel 4: Gradient analysis
+        ax4 = plt.subplot(3, 4, 10)
+        grad_mags = monitoring_data['grad_magnitude']
+        ax4.plot(iterations, grad_mags, 'purple', linewidth=2)
+        ax4.set_xlabel('Iteration')
+        ax4.set_ylabel('Gradient Magnitude')
+        ax4.set_title('Gradient Evolution', fontweight='bold')
+        ax4.grid(True, alpha=0.3)
+        
+        # Panel 5: Input statistics
+        ax5 = plt.subplot(3, 4, 11)
+        input_means = monitoring_data['input_mean']
+        input_stds = monitoring_data['input_std']
+        ax5.plot(iterations, input_means, 'g-', label='Mean', linewidth=2)
+        ax5.plot(iterations, input_stds, 'm-', label='Std', linewidth=2)
+        ax5.set_xlabel('Iteration')
+        ax5.set_ylabel('Input Statistics')
+        ax5.legend()
+        ax5.grid(True, alpha=0.3)
+        ax5.set_title('Input Evolution', fontweight='bold')
+        
+        # Panel 6: Summary statistics
+        ax6 = plt.subplot(3, 4, 12)
+        ax6.axis('off')
+        
+        summary_stats = {
+            'Final Activation': f"{config['final_activation']:.2f}",
+            'Loss Reduction': f"{config['loss_reduction']:.4f}",
+            'Gradient Variation': f"{config['grad_variation']:.6f}",
+            'Real Data Init': '✅' if config['use_real_data_init'] else '❌',
+            'Skip Normalization': '✅' if config['skip_normalization'] else '❌',
+            'Gradients Varying': '✅' if config['grad_variation'] > 1e-6 else '❌'
+        }
+        
+        stats_text = '\n'.join([f"{k}: {v}" for k, v in summary_stats.items()])
+        ax6.text(0.1, 0.9, stats_text, transform=ax6.transAxes, fontsize=12, 
+                verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        ax6.set_title('Summary', fontweight='bold')
+        
+        # Main title
+        norm_status = "NO NORMALIZATION" if config['skip_normalization'] else "WITH NORMALIZATION"
+        init_status = "REAL DATA" if config['use_real_data_init'] else "RANDOM"
+        
+        fig.suptitle(f'Comprehensive Activation Maximization\n'
+                    f'{config["layer_name"]} Filter {config["filter_idx"]} | '
+                    f'{norm_status} | {init_status} INIT', 
+                    fontsize=16, fontweight='bold')
+        
+        plt.tight_layout()
+        
+        # Save plot
+        filename = f"comprehensive_layer_{config['layer_name']}_filter_{config['filter_idx']:02d}"
+        if config['skip_normalization']:
+            filename += "_NO_NORM"
+        if config['use_real_data_init']:
+            filename += "_REAL_INIT"
+        filename += ".png"
+        
+        save_path = save_dir / filename
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        print(f"💾 Comprehensive plot saved: {save_path}")
+        return save_path
     
     def total_variation_loss(self, tensor):
         """Compute total variation loss for smoothness"""

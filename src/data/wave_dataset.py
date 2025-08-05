@@ -134,7 +134,7 @@ class WaveDataset(Dataset):
         """
         with h5py.File(self.hdf5_path, 'r') as f:
             wave_field = f['wave_fields'][idx]
-            coordinates = f['source_coords'][idx]
+            coordinates = f['coordinates'][idx]
         
         return {
             'index': idx,
