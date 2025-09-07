@@ -1,2 +1,0 @@
-layer_idx,filter_idx,iterations,learning_rate,tv_reg,final_activation,final_target_loss,final_suppression_loss,final_tv_loss,loss_reduction,grad_variation,loss_slope_lastk,loss_std_lastk,grad_mean_lastk,converged
-36,30,500,0.01,0.0001,2664.914306640625,-2664.914306640625,972.626220703125,7.331485271453857,1514.3715057373047,0.2582612371287087,-3.277131095677923,94.59795935679074,3.5323054146766664,False
