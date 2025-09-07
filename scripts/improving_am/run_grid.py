@@ -209,6 +209,8 @@ def main():
     parser.add_argument("--out_dir", type=str, default="experiments/improving_am",
                         help="Base output directory")
     parser.add_argument("--seed", type=int, default=42, help="Deterministic seed")
+    parser.add_argument("--model_path", type=str, default="",
+                        help="Explicit model checkpoint path (overrides config)")
     args = parser.parse_args()
 
     set_determinism(args.seed)
@@ -216,7 +218,9 @@ def main():
     cfg = load_config(Path(args.config))
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model, ckpt_path = resolve_model(cfg.get('model_path'), device)
+    # CLI --model_path overrides config (useful in Colab/Drive)
+    model_path_cli = args.model_path if args.model_path else cfg.get('model_path')
+    model, ckpt_path = resolve_model(model_path_cli, device)
 
     # Select layer
     conv_layers = get_conv_layers(model)
