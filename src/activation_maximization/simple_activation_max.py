@@ -143,7 +143,8 @@ class SimpleActivationMaximizer:
                        save_intermediate: bool = True,
                        save_every: int = 100,
                        save_dir: Optional[str] = None,
-                       init_tensor: Optional[torch.Tensor] = None) -> Dict[str, Any]:
+                       init_tensor: Optional[torch.Tensor] = None,
+                       tv_reg: float = 0.0) -> Dict[str, Any]:
         """
         Comprehensive activation maximization with detailed monitoring and plotting.
         
@@ -154,11 +155,11 @@ class SimpleActivationMaximizer:
             learning_rate: Optimization learning rate
             image_size: Size of input image
             use_real_data_init: Initialize with real wave data instead of random
-            skip_normalization: Skip normalization step during optimization
             save_intermediate: Save intermediate patterns during optimization
             save_every: Save intermediate patterns every N iterations
             save_dir: Directory to save plots (if None, uses default)
             init_tensor: Specific tensor to use for initialization (overrides use_real_data_init)
+            tv_reg: Weight for Total Variation regularization for smoothness.
             
         Returns:
             Dictionary with comprehensive results including patterns, monitoring data, plots
@@ -169,6 +170,8 @@ class SimpleActivationMaximizer:
         print(f"📊 Config: {iterations} iterations, LR={learning_rate}")
         print(f"🌊 Real data init: {'✅' if use_real_data_init else '❌'}")
         print(f"📈 Normalization: ALWAYS ON ({self.dataset_name})")
+        if tv_reg > 0:
+            print(f"🎨 Smoothness (TV Regularization): λ={tv_reg}")
         
         # Load real data if requested
         wave_samples = None
@@ -184,6 +187,9 @@ class SimpleActivationMaximizer:
             'iteration': [],
             'loss': [],
             'activation': [],
+            'target_loss': [],
+            'suppression_loss': [],
+            'tv_loss': [],
             'input_mean': [],
             'input_std': [],
             'input_min': [],
@@ -248,12 +254,32 @@ class SimpleActivationMaximizer:
             # Forward pass
             _ = self.model(model_input)
             
-            # Get target activation
-            target_activation = self.activations[layer_name][:, filter_idx]
+            # Get full layer activation (all filters)
+            layer_activation = self.activations[layer_name]  # [batch, filters, height, width]
+            target_activation = layer_activation[:, filter_idx]  # [batch, height, width]
             
-            # Loss: maximize filter activation
-            activation_loss = -target_activation.mean()
-            total_loss = activation_loss
+            # Compute mean absolute activations for all filters in the layer
+            # Since we're hooking Conv2D layers (before ReLU), values can be negative
+            # Use mean(abs(.)) to capture activation strength regardless of sign
+            batch_size, num_filters = layer_activation.shape[:2]
+            filter_means = layer_activation.abs().mean(dim=(2, 3))  # [batch, filters] - mean abs per filter
+            
+            # Target filter mean activation (maximize)
+            target_mean = filter_means[:, filter_idx]  # [batch]
+            
+            # Other filters mean activations (minimize)
+            other_filter_mask = torch.ones(num_filters, dtype=torch.bool, device=layer_activation.device)
+            other_filter_mask[filter_idx] = False
+            other_filter_means = filter_means[:, other_filter_mask]  # [batch, num_filters-1]
+            
+            # Loss: maximize target filter mean activation, minimize other filter mean activations
+            target_loss = -target_mean.mean()  # Negative because we want to maximize
+            suppression_loss = other_filter_means.mean()  # Positive because we want to minimize
+            
+            # Total Variation (on the input image, not normalized)
+            tv_loss = self.total_variation_loss(input_tensor) if tv_reg > 0 else torch.tensor(0.0, device=self.device)
+
+            total_loss = target_loss + suppression_loss + tv_reg * tv_loss
             
             # Backward pass
             total_loss.backward()
@@ -266,7 +292,10 @@ class SimpleActivationMaximizer:
                 
                 monitoring_data['iteration'].append(i)
                 monitoring_data['loss'].append(total_loss.item())
-                monitoring_data['activation'].append(-activation_loss.item())
+                monitoring_data['activation'].append(-target_loss.item())  # Target activation (positive)
+                monitoring_data['target_loss'].append(target_loss.item())  # Target loss term (negative)
+                monitoring_data['suppression_loss'].append(suppression_loss.item())  # Suppression loss term (positive)
+                monitoring_data['tv_loss'].append(tv_loss.item())
                 monitoring_data['input_mean'].append(input_tensor.mean().item())
                 monitoring_data['input_std'].append(input_tensor.std().item())
                 monitoring_data['input_min'].append(input_tensor.min().item())
@@ -281,7 +310,10 @@ class SimpleActivationMaximizer:
                     monitoring_data['intermediate_patterns'].append({
                         'iteration': i,
                         'pattern': pattern_copy,
-                        'activation': -activation_loss.item()
+                        'activation': -target_loss.item(),
+                        'target_loss': target_loss.item(),
+                        'suppression_loss': suppression_loss.item(),
+                        'tv_loss': tv_loss.item()
                     })
             
             # Update best result
@@ -295,18 +327,27 @@ class SimpleActivationMaximizer:
             # Progress reporting
             if i % 100 == 0 or i == iterations - 1:
                 print(f"   Step {i:4d}: Loss={total_loss.item():.4f}, "
-                      f"Activation={-activation_loss.item():.2f}, "
+                      f"Target={-target_loss.item():.2f}, "
+                      f"Suppress={suppression_loss.item():.2f}, "
+                      f"TV={tv_loss.item():.4f} (λ={tv_reg}), "
                       f"GradMag={grad_mag:.6f}, "
                       f"InputStd={input_tensor.std().item():.4f}")
         
         print(f"\n✅ Optimization complete!")
         final_activation = monitoring_data['activation'][-1]
+        final_target_loss = monitoring_data['target_loss'][-1]
+        final_suppression_loss = monitoring_data['suppression_loss'][-1]
+        final_tv_loss = monitoring_data['tv_loss'][-1]
         loss_reduction = monitoring_data['loss'][0] - monitoring_data['loss'][-1]
         avg_grad_mag = np.mean(monitoring_data['grad_magnitude'])
         grad_variation = np.std(monitoring_data['grad_magnitude'])
         
         print(f"📊 Final Results:")
         print(f"   Final Activation: {final_activation:.2f}")
+        print(f"   Final Target Loss: {final_target_loss:.4f}")
+        print(f"   Final Suppression Loss: {final_suppression_loss:.4f}")
+        if tv_reg > 0:
+            print(f"   Final TV Loss: {final_tv_loss:.4f}")
         print(f"   Loss Reduction: {loss_reduction:.4f}")
         print(f"   Average Gradient Magnitude: {avg_grad_mag:.6f}")
         print(f"   Gradient Variation (std): {grad_variation:.6f}")
@@ -328,6 +369,10 @@ class SimpleActivationMaximizer:
                 'use_real_data_init': use_real_data_init,
                 'dataset_name': self.dataset_name,
                 'final_activation': final_activation,
+                'final_target_loss': final_target_loss,
+                'final_suppression_loss': final_suppression_loss,
+                'final_tv_loss': final_tv_loss,
+                'tv_reg': tv_reg,
                 'loss_reduction': loss_reduction,
                 'grad_variation': grad_variation
             }
@@ -391,8 +436,8 @@ class SimpleActivationMaximizer:
                 pattern_normalized = (pattern_raw - wave_mean) / wave_std
                 
                 im = ax.imshow(pattern_normalized, cmap='RdBu_r', interpolation='nearest')
-                ax.set_title(f"Step {step_data['iteration']}\nAct: {step_data['activation']:.1f}", 
-                           fontsize=9, fontweight='bold')
+                ax.set_title(f"Step {step_data['iteration']}\nAct: {step_data['activation']:.1f} T:{step_data['target_loss']:.1f} S:{step_data['suppression_loss']:.1f}\nTV: {step_data['tv_loss']:.2f}", 
+                           fontsize=8, fontweight='bold')
                 ax.set_xticks([])
                 ax.set_yticks([])
         
@@ -401,17 +446,24 @@ class SimpleActivationMaximizer:
         iterations = monitoring_data['iteration']
         losses = monitoring_data['loss']
         activations = monitoring_data['activation']
+        target_losses = monitoring_data['target_loss']
+        suppression_losses = monitoring_data['suppression_loss']
+        tv_losses = monitoring_data['tv_loss']
         
-        ax3.plot(iterations, losses, 'b-', label='Loss', linewidth=2)
+        ax3.plot(iterations, losses, 'b-', label='Total Loss', linewidth=2)
+        ax3.plot(iterations, target_losses, 'r-', label='Target Loss', linewidth=2)
+        ax3.plot(iterations, suppression_losses, 'orange', label='Suppression Loss', linewidth=2)
+        if config['tv_reg'] > 0 and any(tv > 0 for tv in tv_losses):
+            ax3.plot(iterations, [v * config['tv_reg'] for v in tv_losses], 'k--', label=f'TV (λ={config["tv_reg"]})', linewidth=1.5)
         ax3.set_xlabel('Iteration')
-        ax3.set_ylabel('Loss', color='b')
-        ax3.tick_params(axis='y', labelcolor='b')
+        ax3.set_ylabel('Loss Components')
+        ax3.legend(fontsize=8)
         ax3.grid(True, alpha=0.3)
         
         ax3_twin = ax3.twinx()
-        ax3_twin.plot(iterations, activations, 'r-', label='Activation', linewidth=2)
-        ax3_twin.set_ylabel('Activation', color='r')
-        ax3_twin.tick_params(axis='y', labelcolor='r')
+        ax3_twin.plot(iterations, activations, 'g-', label='Activation', linewidth=2)
+        ax3_twin.set_ylabel('Activation', color='g')
+        ax3_twin.tick_params(axis='y', labelcolor='g')
         
         ax3.set_title('Optimization Progress', fontweight='bold')
         
@@ -442,25 +494,32 @@ class SimpleActivationMaximizer:
         
         summary_stats = {
             'Final Activation': f"{config['final_activation']:.2f}",
+            'Final Target Loss': f"{config['final_target_loss']:.4f}",
+            'Final Suppression Loss': f"{config['final_suppression_loss']:.4f}",
+        }
+        if config['tv_reg'] > 0:
+            summary_stats['Final TV Loss'] = f"{config['final_tv_loss']:.4f}"
+        summary_stats.update({
             'Loss Reduction': f"{config['loss_reduction']:.4f}",
             'Gradient Variation': f"{config['grad_variation']:.6f}",
             'Real Data Init': '✅' if config['use_real_data_init'] else '❌',
             'Dataset': self.dataset_name,
             'Gradients Varying': '✅' if config['grad_variation'] > 1e-6 else '❌'
-        }
+        })
         
         stats_text = '\n'.join([f"{k}: {v}" for k, v in summary_stats.items()])
-        ax6.text(0.1, 0.9, stats_text, transform=ax6.transAxes, fontsize=12, 
+        ax6.text(0.1, 0.9, stats_text, transform=ax6.transAxes, fontsize=10, 
                 verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
         ax6.set_title('Summary', fontweight='bold')
         
         # Main title
         norm_status = "WITH NORMALIZATION"
         init_status = "REAL DATA" if config['use_real_data_init'] else "RANDOM"
+        reg_status = f"TV λ={config['tv_reg']}" if config['tv_reg'] > 0 else "NO REG"
         
         fig.suptitle(f'Comprehensive Activation Maximization\n'
                     f'{config["layer_name"]} Filter {config["filter_idx"]} | '
-                    f'{norm_status} | {init_status} INIT', 
+                    f'{norm_status} | {init_status} INIT | {reg_status}', 
                     fontsize=16, fontweight='bold')
         
         plt.tight_layout()
@@ -480,8 +539,8 @@ class SimpleActivationMaximizer:
     
     def total_variation_loss(self, tensor):
         """Compute total variation loss for smoothness"""
-        tv_h = torch.mean((tensor[:, :, 1:, :] - tensor[:, :, :-1, :]) ** 2)
-        tv_w = torch.mean((tensor[:, :, :, 1:] - tensor[:, :, :, :-1]) ** 2)
+        tv_h = torch.mean(torch.abs(tensor[:, :, 1:, :] - tensor[:, :, :-1, :]))
+        tv_w = torch.mean(torch.abs(tensor[:, :, :, 1:] - tensor[:, :, :, :-1]))
         return tv_h + tv_w
 
 

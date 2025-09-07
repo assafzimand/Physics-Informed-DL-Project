@@ -168,7 +168,8 @@ def main():
                 iterations=500,
                 learning_rate=0.01,
                 use_real_data_init=True,
-                save_dir=layer_save_dir
+                save_dir=layer_save_dir,
+                tv_reg=1e-4
             )
             
             print(f"✅ Filter {filter_idx} complete! Final activation: "

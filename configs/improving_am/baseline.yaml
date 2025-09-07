@@ -1,0 +1,31 @@
+# AM Grid Search Baseline Configuration
+
+# Optional: explicit model checkpoint. If empty, will auto-resolve best CV model.
+model_path: ""
+
+# Fixed selections
+layer_idx: 10          # choose a mid/deep conv layer index from printed list
+filter_idx: auto       # auto-pick most active filter for the fixed sample
+dataset_path: data/wave_dataset_analysis_20samples.h5
+sample_idx: 0          # fixed sample used as init_tensor (RAW)
+
+# Grid
+grid:
+  # Minimal single-run grid for pipeline smoke test
+  learning_rates: [0.01]
+  iterations: [500]
+  tv_regs: [1.0e-4]
+
+  # Extended grid examples (uncomment to expand)
+  # learning_rates: [0.005, 0.01, 0.02]
+  # iterations: [500, 1000]
+  # tv_regs: [0.0, 1.0e-5, 1.0e-4, 5.0e-4]
+
+# Convergence criteria (evaluated over last K iterations)
+convergence:
+  last_k: 100
+  slope_eps: 1.0e-2
+  std_eps: 5.0e-2
+  grad_eps: 1.0e-2
+
+
