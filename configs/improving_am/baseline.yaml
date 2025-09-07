@@ -4,19 +4,27 @@
 model_path: ""
 
 # Fixed selections
-layer_idx: 10          # choose a mid/deep conv layer index from printed list
-filter_idx: auto       # auto-pick most active filter for the fixed sample
+layer_idx: 10          # legacy single-layer path; ignored if selection.mode is set
+filter_idx: auto       # legacy single-filter path; ignored if selection.mode is set
 dataset_path: data/wave_dataset_analysis_20samples.h5
 sample_idx: 0          # fixed sample used as init_tensor (RAW)
+
+# Multi-layer/multi-filter selection
+selection:
+  mode: last_n           # options: last_n | explicit
+  last_n_layers: 5       # when mode=last_n, take last N Conv2d layers
+  layer_indices: []      # when mode=explicit, list of layer indices in conv_layers list
+  top_k_filters: 3       # per selected layer, take top-K active filters for the sample
 
 # Grid
 grid:
   # Full grid sweep
-  learning_rates: [0.0005, 0.001, 0.005]
+  learning_rates: [2.5e-4, 1.0e-3, 3.0e-3, 1.0e-2]
   iterations: [500, 1000]
-  tv_regs: [5.0e-4, 1.0e-3, 2.0e-3, 5.0e-3]
-  l2_regs: [1.0e-4, 5.0e-4, 1.0e-3, 2.0e-3]
+  tv_regs: [0.0, 2.0e-3, 1.0e-2, 3.0e-2]
+  l2_regs: [0.0, 1.0e-3, 5.0e-3, 2.0e-2]
   activation_modes: [mean_abs, mean, l2]
+  sample_indices: [0, 1, 2]
 
 # Convergence criteria (evaluated over last K iterations)
 convergence:

@@ -41,4 +41,7 @@ colab/models/*.pth
 
 # Large result files that can be regenerated
 results/grid_search_*/downloaded_*
+
+# Activation Maximization results
+experiments/activation_maximization/improving_am_results/
  

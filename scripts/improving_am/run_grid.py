@@ -227,21 +227,30 @@ def main():
     model_path_cli = args.model_path if args.model_path else cfg.get('model_path')
     model, ckpt_path = resolve_model(model_path_cli, device)
 
-    # Select layer
+    # Load dataset once
+    dataset_path = cfg.get('dataset_path', 'data/wave_dataset_analysis_20samples.h5')
+    dataset = WaveDataset(dataset_path, normalize_wave_fields=False)
+    
+    # Select layers for analysis
     conv_layers = get_conv_layers(model)
     if not conv_layers:
         raise RuntimeError("No Conv2d layers found.")
-    layer_choice = int(cfg.get('layer_idx', 0))
-    if not (0 <= layer_choice < len(conv_layers)):
-        raise ValueError(f"layer_idx out of range (0..{len(conv_layers)-1}): {layer_choice}")
-    layer_idx, layer_name, target_layer = conv_layers[layer_choice]
-
-    # Load fixed RAW sample to use as deterministic init_tensor
-    dataset_path = cfg.get('dataset_path', 'data/wave_dataset_analysis_20samples.h5')
-    sample_idx = int(cfg.get('sample_idx', 0))
-    dataset = WaveDataset(dataset_path, normalize_wave_fields=False)
-    wave_field, _ = dataset[sample_idx]
-    init_tensor = wave_field.to(device)  # Expect shape [1, 1, H, W]
+    selection = cfg.get('selection', {})
+    mode = selection.get('mode', '').lower()
+    selected_layers: List[Tuple[int, str, torch.nn.Module]]
+    if mode == 'last_n':
+        n = int(selection.get('last_n_layers', 1))
+        selected_layers = conv_layers[-n:]
+    elif mode == 'explicit':
+        indices = selection.get('layer_indices', [])
+        selected_layers = [conv_layers[i] for i in indices if 0 <= i < len(conv_layers)]
+    else:
+        # fallback to single-layer legacy path
+        layer_choice = int(cfg.get('layer_idx', 0))
+        if not (0 <= layer_choice < len(conv_layers)):
+            raise ValueError(f"layer_idx out of range (0..{len(conv_layers)-1}): {layer_choice}")
+        selected_layers = [conv_layers[layer_choice]]
+    top_k_filters = int(selection.get('top_k_filters', 1))
 
     # Determine filter index: if not provided or set to 'auto'/-1, pick most active
     filter_idx_cfg = cfg.get('filter_idx', 'auto')
@@ -264,6 +273,7 @@ def main():
     tv_regs = grid.get('tv_regs', [0.0])
     l2_regs = grid.get('l2_regs', [0.0])
     activation_modes = grid.get('activation_modes', ['mean_abs'])
+    sample_indices = grid.get('sample_indices', [int(cfg.get('sample_idx', 0))])
 
     # Convergence thresholds
     convergence_cfg = cfg.get('convergence', {
@@ -280,7 +290,8 @@ def main():
     # Master CSV
     csv_path = base_out / "results.csv"
     csv_fields = [
-        'layer_idx', 'filter_idx', 'iterations', 'learning_rate', 'tv_reg', 'l2_reg', 'activation_mode',
+        'layer_idx', 'layer_name', 'filter_idx', 'sample_idx',
+        'iterations', 'learning_rate', 'tv_reg', 'l2_reg', 'activation_mode',
         'final_activation', 'final_target_loss', 'final_suppression_loss', 'final_tv_loss',
         'final_l2_loss',
         'loss_reduction', 'grad_variation',
@@ -291,32 +302,70 @@ def main():
         writer.writeheader()
 
     run_idx = 0
-    for iters in iterations_list:
-        for lr in learning_rates:
-            for tv in tv_regs:
-                for l2 in l2_regs:
-                    for act in activation_modes:
-                        run_params = {
-                            'iterations': iters,
-                            'learning_rate': lr,
-                            'tv_reg': tv,
-                            'l2_reg': l2,
-                            'activation_mode': act,
-                            'filter_idx': top_filter_idx,
-                            'convergence': convergence_cfg,
-                        }
-                        run_dir = base_out / f"run_{run_idx:03d}_it{iters}_lr{lr}_tv{tv}_l2{l2}_act{act}"
+    # Iterate over samples
+    for sample_idx in sample_indices:
+        wave_field, _ = dataset[int(sample_idx)]
+        init_tensor = wave_field.to(device)
 
-                        print(f"\n===== RUN {run_idx} =====")
-                        print(f"Layer {layer_idx} ({layer_name}) | filter {top_filter_idx}")
-                        print(f"iters={iters}, lr={lr}, tv_reg={tv}, l2_reg={l2}, act={act}")
-                        summary = run_one(model, ckpt_path, target_layer, layer_idx, init_tensor, device, run_params, run_dir)
+        # For each selected layer, compute top-K filters using training normalization
+        stats_resolver = SimpleActivationMaximizer(model, device, model_path=str(ckpt_path))
+        wave_mean, wave_std = stats_resolver.wave_mean, stats_resolver.wave_std
 
-                        with open(csv_path, 'a', newline='') as f:
-                            writer = csv.DictWriter(f, fieldnames=csv_fields)
-                            writer.writerow({k: summary.get(k, '') for k in csv_fields})
+        for (layer_internal_idx, layer_name, target_layer) in selected_layers:
+            # Rank filters on this layer for this sample
+            top_filters: List[int] = []
+            try:
+                with torch.no_grad():
+                    norm_sample = (init_tensor - wave_mean) / wave_std
+                    # capture activations and rank by mean(abs)
+                    activations: Dict[str, torch.Tensor] = {}
+                    def hook_fn(m, i, o):
+                        activations['t'] = o.detach()
+                    h = target_layer.register_forward_hook(hook_fn)
+                    _ = model(norm_sample)
+                    h.remove()
+                    layer_out = activations.get('t')
+                    if layer_out is None:
+                        raise RuntimeError('Failed to capture activations for ranking')
+                    scores = layer_out.abs().mean(dim=(0, 2, 3))
+                    top_filters = torch.argsort(scores, descending=True)[:top_k_filters].cpu().tolist()
+            except Exception as e:
+                print(f"⚠️ Ranking failed for layer {layer_internal_idx}: {e}")
+                top_filters = [0]
 
-                        run_idx += 1
+            for filt in top_filters:
+                for iters in iterations_list:
+                    for lr in learning_rates:
+                        for tv in tv_regs:
+                            for l2 in l2_regs:
+                                for act in activation_modes:
+                                    run_params = {
+                                        'iterations': iters,
+                                        'learning_rate': lr,
+                                        'tv_reg': tv,
+                                        'l2_reg': l2,
+                                        'activation_mode': act,
+                                        'filter_idx': int(filt),
+                                        'convergence': convergence_cfg,
+                                    }
+                                    run_dir = base_out / (
+                                        f"run_{run_idx:04d}_s{sample_idx}_layer{layer_internal_idx}_f{filt}_it{iters}_lr{lr}_tv{tv}_l2{l2}_act{act}"
+                                    )
+
+                                    print(f"\n===== RUN {run_idx} =====")
+                                    print(f"Sample {sample_idx} | Layer {layer_internal_idx} ({layer_name}) | filter {filt}")
+                                    print(f"iters={iters}, lr={lr}, tv_reg={tv}, l2_reg={l2}, act={act}")
+                                    summary = run_one(model, ckpt_path, target_layer, layer_internal_idx, init_tensor, device, run_params, run_dir)
+
+                                    # Augment summary with identifiers
+                                    summary['layer_name'] = layer_name
+                                    summary['sample_idx'] = int(sample_idx)
+
+                                    with open(csv_path, 'a', newline='') as f:
+                                        writer = csv.DictWriter(f, fieldnames=csv_fields)
+                                        writer.writerow({k: summary.get(k, '') for k in csv_fields})
+
+                                    run_idx += 1
 
     # Save config snapshot
     with open(base_out / "config_used.json", 'w') as f:
