@@ -1,0 +1,30 @@
+{
+  "model_path": "",
+  "layer_idx": 10,
+  "filter_idx": "auto",
+  "dataset_path": "/content/drive/MyDrive/Physics_Informed_DL_Project/datasets/wave_dataset_analysis_20samples.h5",
+  "sample_idx": 0,
+  "grid": {
+    "learning_rates": [
+      0.005,
+      0.01,
+      0.02
+    ],
+    "iterations": [
+      500,
+      1000
+    ],
+    "tv_regs": [
+      0.0,
+      1e-05,
+      0.0001,
+      0.0005
+    ]
+  },
+  "convergence": {
+    "last_k": 100,
+    "slope_eps": 0.01,
+    "std_eps": 0.05,
+    "grad_eps": 0.01
+  }
+}

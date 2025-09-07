@@ -144,7 +144,8 @@ class SimpleActivationMaximizer:
                        save_every: int = 100,
                        save_dir: Optional[str] = None,
                        init_tensor: Optional[torch.Tensor] = None,
-                       tv_reg: float = 0.0) -> Dict[str, Any]:
+                       tv_reg: float = 0.0,
+                       l2_reg: float = 0.0) -> Dict[str, Any]:
         """
         Comprehensive activation maximization with detailed monitoring and plotting.
         
@@ -160,6 +161,7 @@ class SimpleActivationMaximizer:
             save_dir: Directory to save plots (if None, uses default)
             init_tensor: Specific tensor to use for initialization (overrides use_real_data_init)
             tv_reg: Weight for Total Variation regularization for smoothness.
+            l2_reg: Weight for L2 regularization on the input (amplitude control).
             
         Returns:
             Dictionary with comprehensive results including patterns, monitoring data, plots
@@ -172,6 +174,8 @@ class SimpleActivationMaximizer:
         print(f"📈 Normalization: ALWAYS ON ({self.dataset_name})")
         if tv_reg > 0:
             print(f"🎨 Smoothness (TV Regularization): λ={tv_reg}")
+        if l2_reg > 0:
+            print(f"🧰 Amplitude (L2 on input): λ={l2_reg}")
         
         # Load real data if requested
         wave_samples = None
@@ -190,6 +194,7 @@ class SimpleActivationMaximizer:
             'target_loss': [],
             'suppression_loss': [],
             'tv_loss': [],
+            'l2_loss': [],
             'input_mean': [],
             'input_std': [],
             'input_min': [],
@@ -278,8 +283,9 @@ class SimpleActivationMaximizer:
             
             # Total Variation (on the input image, not normalized)
             tv_loss = self.total_variation_loss(input_tensor) if tv_reg > 0 else torch.tensor(0.0, device=self.device)
+            l2_loss = (input_tensor ** 2).mean() if l2_reg > 0 else torch.tensor(0.0, device=self.device)
 
-            total_loss = target_loss + suppression_loss + tv_reg * tv_loss
+            total_loss = target_loss + suppression_loss + tv_reg * tv_loss + l2_reg * l2_loss
             
             # Backward pass
             total_loss.backward()
@@ -296,6 +302,7 @@ class SimpleActivationMaximizer:
                 monitoring_data['target_loss'].append(target_loss.item())  # Target loss term (negative)
                 monitoring_data['suppression_loss'].append(suppression_loss.item())  # Suppression loss term (positive)
                 monitoring_data['tv_loss'].append(tv_loss.item())
+                monitoring_data['l2_loss'].append(l2_loss.item())
                 monitoring_data['input_mean'].append(input_tensor.mean().item())
                 monitoring_data['input_std'].append(input_tensor.std().item())
                 monitoring_data['input_min'].append(input_tensor.min().item())
@@ -313,7 +320,8 @@ class SimpleActivationMaximizer:
                         'activation': -target_loss.item(),
                         'target_loss': target_loss.item(),
                         'suppression_loss': suppression_loss.item(),
-                        'tv_loss': tv_loss.item()
+                        'tv_loss': tv_loss.item(),
+                        'l2_loss': l2_loss.item()
                     })
             
             # Update best result
@@ -330,6 +338,7 @@ class SimpleActivationMaximizer:
                       f"Target={-target_loss.item():.2f}, "
                       f"Suppress={suppression_loss.item():.2f}, "
                       f"TV={tv_loss.item():.4f} (λ={tv_reg}), "
+                      f"L2={l2_loss.item():.4f} (λ={l2_reg}), "
                       f"GradMag={grad_mag:.6f}, "
                       f"InputStd={input_tensor.std().item():.4f}")
         
@@ -338,6 +347,7 @@ class SimpleActivationMaximizer:
         final_target_loss = monitoring_data['target_loss'][-1]
         final_suppression_loss = monitoring_data['suppression_loss'][-1]
         final_tv_loss = monitoring_data['tv_loss'][-1]
+        final_l2_loss = monitoring_data['l2_loss'][-1]
         loss_reduction = monitoring_data['loss'][0] - monitoring_data['loss'][-1]
         avg_grad_mag = np.mean(monitoring_data['grad_magnitude'])
         grad_variation = np.std(monitoring_data['grad_magnitude'])
@@ -348,6 +358,8 @@ class SimpleActivationMaximizer:
         print(f"   Final Suppression Loss: {final_suppression_loss:.4f}")
         if tv_reg > 0:
             print(f"   Final TV Loss: {final_tv_loss:.4f}")
+        if l2_reg > 0:
+            print(f"   Final L2 Loss: {final_l2_loss:.4f}")
         print(f"   Loss Reduction: {loss_reduction:.4f}")
         print(f"   Average Gradient Magnitude: {avg_grad_mag:.6f}")
         print(f"   Gradient Variation (std): {grad_variation:.6f}")
@@ -372,7 +384,9 @@ class SimpleActivationMaximizer:
                 'final_target_loss': final_target_loss,
                 'final_suppression_loss': final_suppression_loss,
                 'final_tv_loss': final_tv_loss,
+                'final_l2_loss': final_l2_loss,
                 'tv_reg': tv_reg,
+                'l2_reg': l2_reg,
                 'loss_reduction': loss_reduction,
                 'grad_variation': grad_variation
             }
@@ -449,12 +463,15 @@ class SimpleActivationMaximizer:
         target_losses = monitoring_data['target_loss']
         suppression_losses = monitoring_data['suppression_loss']
         tv_losses = monitoring_data['tv_loss']
+        l2_losses = monitoring_data['l2_loss']
         
         ax3.plot(iterations, losses, 'b-', label='Total Loss', linewidth=2)
         ax3.plot(iterations, target_losses, 'r-', label='Target Loss', linewidth=2)
         ax3.plot(iterations, suppression_losses, 'orange', label='Suppression Loss', linewidth=2)
         if config['tv_reg'] > 0 and any(tv > 0 for tv in tv_losses):
             ax3.plot(iterations, [v * config['tv_reg'] for v in tv_losses], 'k--', label=f'TV (λ={config["tv_reg"]})', linewidth=1.5)
+        if config.get('l2_reg', 0.0) > 0 and any(v > 0 for v in l2_losses):
+            ax3.plot(iterations, [v * config['l2_reg'] for v in l2_losses], 'c-.', label=f'L2 (λ={config["l2_reg"]})', linewidth=1.5)
         ax3.set_xlabel('Iteration')
         ax3.set_ylabel('Loss Components')
         ax3.legend(fontsize=8)
@@ -499,6 +516,8 @@ class SimpleActivationMaximizer:
         }
         if config['tv_reg'] > 0:
             summary_stats['Final TV Loss'] = f"{config['final_tv_loss']:.4f}"
+        if config.get('l2_reg', 0.0) > 0:
+            summary_stats['Final L2 Loss'] = f"{config['final_l2_loss']:.4f}"
         summary_stats.update({
             'Loss Reduction': f"{config['loss_reduction']:.4f}",
             'Gradient Variation': f"{config['grad_variation']:.6f}",
@@ -515,7 +534,12 @@ class SimpleActivationMaximizer:
         # Main title
         norm_status = "WITH NORMALIZATION"
         init_status = "REAL DATA" if config['use_real_data_init'] else "RANDOM"
-        reg_status = f"TV λ={config['tv_reg']}" if config['tv_reg'] > 0 else "NO REG"
+        regs = []
+        if config['tv_reg'] > 0:
+            regs.append(f"TV λ={config['tv_reg']}")
+        if config.get('l2_reg', 0.0) > 0:
+            regs.append(f"L2 λ={config['l2_reg']}")
+        reg_status = " | ".join(regs) if regs else "NO REG"
         
         fig.suptitle(f'Comprehensive Activation Maximization\n'
                     f'{config["layer_name"]} Filter {config["filter_idx"]} | '

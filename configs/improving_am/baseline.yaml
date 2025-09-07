@@ -15,12 +15,13 @@ grid:
   learning_rates: [0.005, 0.01, 0.02]
   iterations: [500, 1000]
   tv_regs: [0.0, 1.0e-5, 1.0e-4, 5.0e-4]
+  l2_regs: [0.0, 1.0e-6, 1.0e-5, 1.0e-4]
 
 # Convergence criteria (evaluated over last K iterations)
 convergence:
-  last_k: 100
-  slope_eps: 1.0e-2
-  std_eps: 5.0e-2
+  last_k: 200
+  slope_eps: 5.0e-2
+  std_eps: 5.0e-1
   grad_eps: 1.0e-2
 
 
