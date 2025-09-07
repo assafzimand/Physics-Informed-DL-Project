@@ -296,7 +296,7 @@ def main():
                 run_dir = base_out / f"run_{run_idx:03d}_it{iters}_lr{lr}_tv{tv}"
 
                 print(f"\n===== RUN {run_idx} =====")
-                print(f"Layer {layer_idx} ({layer_name}) | filter {filter_idx}")
+                print(f"Layer {layer_idx} ({layer_name}) | filter {top_filter_idx}")
                 print(f"iters={iters}, lr={lr}, tv_reg={tv}")
                 summary = run_one(model, ckpt_path, target_layer, layer_idx, init_tensor, device, run_params, run_dir)
 
