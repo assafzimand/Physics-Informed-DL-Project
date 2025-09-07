@@ -296,28 +296,27 @@ def main():
             for tv in tv_regs:
                 for l2 in l2_regs:
                     for act in activation_modes:
-                    run_params = {
-                        'iterations': iters,
-                        'learning_rate': lr,
-                        'tv_reg': tv,
-                        'l2_reg': l2,
-                        'activation_mode': act,
-                        'filter_idx': top_filter_idx,
-                        'convergence': convergence_cfg,
-                    }
-                    run_dir = base_out / f"run_{run_idx:03d}_it{iters}_lr{lr}_tv{tv}_l2{l2}_act{act}"
+                        run_params = {
+                            'iterations': iters,
+                            'learning_rate': lr,
+                            'tv_reg': tv,
+                            'l2_reg': l2,
+                            'activation_mode': act,
+                            'filter_idx': top_filter_idx,
+                            'convergence': convergence_cfg,
+                        }
+                        run_dir = base_out / f"run_{run_idx:03d}_it{iters}_lr{lr}_tv{tv}_l2{l2}_act{act}"
 
-                    print(f"\n===== RUN {run_idx} =====")
-                    print(f"Layer {layer_idx} ({layer_name}) | filter {top_filter_idx}")
-                    print(f"iters={iters}, lr={lr}, tv_reg={tv}, l2_reg={l2}, act={act}")
-                    summary = run_one(model, ckpt_path, target_layer, layer_idx, init_tensor, device, run_params, run_dir)
+                        print(f"\n===== RUN {run_idx} =====")
+                        print(f"Layer {layer_idx} ({layer_name}) | filter {top_filter_idx}")
+                        print(f"iters={iters}, lr={lr}, tv_reg={tv}, l2_reg={l2}, act={act}")
+                        summary = run_one(model, ckpt_path, target_layer, layer_idx, init_tensor, device, run_params, run_dir)
 
-                    # Append to CSV
-                    with open(csv_path, 'a', newline='') as f:
-                        writer = csv.DictWriter(f, fieldnames=csv_fields)
-                        writer.writerow({k: summary.get(k, '') for k in csv_fields})
+                        with open(csv_path, 'a', newline='') as f:
+                            writer = csv.DictWriter(f, fieldnames=csv_fields)
+                            writer.writerow({k: summary.get(k, '') for k in csv_fields})
 
-                    run_idx += 1
+                        run_idx += 1
 
     # Save config snapshot
     with open(base_out / "config_used.json", 'w') as f:
