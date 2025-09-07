@@ -12,7 +12,8 @@ import torch
 import time
 from datetime import datetime, timedelta
 
-sys.path.append(str(Path(__file__).parent.parent.parent / "src"))
+# Ensure project root is on sys.path so imports like 'src.*' resolve
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.activation_maximization.simple_activation_max import (
     SimpleActivationMaximizer
@@ -172,11 +173,18 @@ def main():
         layer_save_dir = f"experiments/activation_maximization/comprehensive/layer_{layer_idx}"
         
         try:
-            # Find top active filters for this layer (using normalized sample for activation measurement)
-            # Create a temporary normalized dataset just for finding active filters
-            temp_normalized_dataset = WaveDataset(dataset_path, normalize_wave_fields=True)
-            normalized_sample, _ = temp_normalized_dataset[sample_idx]
-            normalized_sample = normalized_sample.to(device)
+            # Find top active filters using TRAINING normalization stats (consistent with AM/inference)
+            # 1) Load RAW sample (no normalization)
+            temp_raw_dataset = WaveDataset(dataset_path, normalize_wave_fields=False)
+            raw_sample, _ = temp_raw_dataset[sample_idx]
+            raw_sample = raw_sample.to(device)
+
+            # 2) Resolve training stats (T250/T500) via model_path
+            norm_resolver = SimpleActivationMaximizer(model, device, model_path=str(model_path))
+            wave_mean, wave_std = norm_resolver.wave_mean, norm_resolver.wave_std
+
+            # 3) Normalize RAW sample with training stats for ranking
+            normalized_sample = (raw_sample - wave_mean) / wave_std
             
             top_filters = get_top_active_filters(model, device, target_layer, 
                                                normalized_sample, top_k=TOP_K)
@@ -186,8 +194,8 @@ def main():
                 failed_layers += 1
                 continue
             
-            # Setup maximizer for this layer
-            maximizer = SimpleActivationMaximizer(model, device)
+            # Setup maximizer for this layer (pass model_path for normalization inference)
+            maximizer = SimpleActivationMaximizer(model, device, model_path=str(model_path))
             maximizer.register_hook("target_layer", target_layer)
             
             try:
@@ -210,7 +218,6 @@ def main():
                             filter_idx=filter_idx,
                             iterations=ITERATIONS,
                             learning_rate=LEARNING_RATE,
-                            skip_normalization=False,
                             use_real_data_init=False,  # IMPORTANT: Set to False when using init_tensor
                             init_tensor=init_tensor,  # Same RAW tensor for all filters!
                             save_dir=layer_save_dir

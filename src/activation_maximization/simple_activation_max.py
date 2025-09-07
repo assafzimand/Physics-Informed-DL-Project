@@ -23,7 +23,7 @@ class SimpleActivationMaximizer:
     No RGB conversion, no external dependencies - just pure PyTorch.
     """
     
-    def __init__(self, model, device='cpu'):
+    def __init__(self, model, device='cpu', model_path: Optional[str] = None, dataset_name: Optional[str] = None):
         """
         Initialize the activation maximizer.
         
@@ -35,6 +35,9 @@ class SimpleActivationMaximizer:
         self.device = device
         self.hooks = {}
         self.activations = {}
+        # Normalization stats resolved from training dataset (T250/T500)
+        self.dataset_name = self._determine_dataset_name(model_path, dataset_name)
+        self.wave_mean, self.wave_std = self._load_training_normalization_stats(self.dataset_name)
         
     def register_hook(self, layer_name: str, module):
         """Register forward hook on target layer"""
@@ -49,6 +52,68 @@ class SimpleActivationMaximizer:
         for handle in self.hooks.values():
             handle.remove()
         self.hooks.clear()
+    
+    def _determine_dataset_name(self, model_path: Optional[str], dataset_name: Optional[str]) -> str:
+        """Infer dataset name (T250/T500) from explicit arg or model checkpoint path/config."""
+        # Priority 1: explicit dataset_name
+        if dataset_name is not None:
+            return dataset_name.upper()
+        # Priority 2: try reading checkpoint config
+        if model_path is not None:
+            try:
+                import torch as _torch
+                ckpt = _torch.load(model_path, map_location='cpu')
+                if isinstance(ckpt, dict):
+                    cfg = ckpt.get('config') or {}
+                    ds_name = (cfg.get('dataset_name') or '').upper()
+                    ds_path = (cfg.get('dataset_path') or '').upper()
+                    if ds_name in { 'T250', 'T500' }:
+                        return ds_name
+                    if 'T250' in ds_path:
+                        return 'T250'
+                    if 'T500' in ds_path:
+                        return 'T500'
+            except Exception:
+                pass
+            # Priority 3: heuristics from model_path string
+            path_lower = str(model_path).lower()
+            if 't250' in path_lower:
+                return 'T250'
+            if 't500' in path_lower:
+                return 'T500'
+        # Fallback: default to T500 but warn
+        print("⚠️ Could not determine dataset from model; defaulting to T500 normalization")
+        return 'T500'
+
+    def _load_training_normalization_stats(self, dataset_name: str) -> Tuple[float, float]:
+        """Load wave_mean/std from the corresponding TRAINING HDF5 file attributes.
+
+        Uses:
+          - data/wave_dataset_T250.h5 for T250
+          - data/wave_dataset_T500.h5 for T500
+        Falls back to historical constants if files are unavailable.
+        """
+        import h5py as _h5
+        from pathlib import Path as _Path
+        ds = dataset_name.upper()
+        if ds == 'T250':
+            h5_path = _Path('data/wave_dataset_T250.h5')
+        else:
+            h5_path = _Path('data/wave_dataset_T500.h5')
+        try:
+            if h5_path.exists():
+                with _h5.File(str(h5_path), 'r') as f:
+                    mean = float(f.attrs.get('wave_mean'))
+                    std = float(f.attrs.get('wave_std'))
+                    print(f"📊 Using training normalization ({ds}): mean={mean:.6f}, std={std:.6f}")
+                    return mean, std
+        except Exception:
+            pass
+        # Historical defaults (kept for safety)
+        default_mean = 0.000460
+        default_std = 0.020842
+        print(f"⚠️ Using fallback normalization ({ds}): mean={default_mean:.6f}, std={default_std:.6f}")
+        return default_mean, default_std
         
     def load_real_wave_samples(self, dataset_path="data/wave_dataset_analysis_20samples.h5"):
         """Load real wave samples for initialization"""
@@ -75,7 +140,6 @@ class SimpleActivationMaximizer:
                        learning_rate: float = 0.01,
                        image_size: int = 128,
                        use_real_data_init: bool = True,
-                       skip_normalization: bool = False,
                        save_intermediate: bool = True,
                        save_every: int = 100,
                        save_dir: Optional[str] = None,
@@ -104,7 +168,7 @@ class SimpleActivationMaximizer:
         print(f"🔍 Target: {layer_name} filter {filter_idx}")
         print(f"📊 Config: {iterations} iterations, LR={learning_rate}")
         print(f"🌊 Real data init: {'✅' if use_real_data_init else '❌'}")
-        print(f"📈 Skip normalization: {'✅' if skip_normalization else '❌'}")
+        print(f"📈 Normalization: ALWAYS ON ({self.dataset_name})")
         
         # Load real data if requested
         wave_samples = None
@@ -156,24 +220,9 @@ class SimpleActivationMaximizer:
                                      requires_grad=True, device=self.device)
             initial_pattern = input_tensor.clone().detach()
         
-        # Load proper normalization constants from the dataset
-        dataset_path = "data/wave_dataset_analysis_20samples.h5"
-        try:
-            import sys
-            from pathlib import Path as PathLib
-            sys.path.append(str(PathLib(__file__).parent.parent.parent))
-            from src.data.wave_dataset import WaveDataset
-            
-            # Create dataset to get normalization statistics
-            temp_dataset = WaveDataset(dataset_path, normalize_wave_fields=True)
-            wave_mean = temp_dataset.wave_mean
-            wave_std = temp_dataset.wave_std
-            print(f"📊 Using dataset normalization: mean={wave_mean:.6f}, std={wave_std:.6f}")
-        except:
-            # Fallback to hardcoded values if dataset loading fails
-            wave_mean = 0.000460
-            wave_std = 0.020842
-            print(f"⚠️ Using fallback normalization: mean={wave_mean:.6f}, std={wave_std:.6f}")
+        # Use training normalization constants resolved at init
+        wave_mean = self.wave_mean
+        wave_std = self.wave_std
         
         # Optimizer
         optimizer = torch.optim.Adam([input_tensor], lr=learning_rate)
@@ -189,13 +238,9 @@ class SimpleActivationMaximizer:
         for i in range(iterations):
             optimizer.zero_grad()
             
-            # Forward pass with optional normalization
-            if skip_normalization:
-                model_input = input_tensor
-                print_norm_status = "RAW (no normalization)" if i == 0 else ""
-            else:
-                model_input = (input_tensor - wave_mean) / wave_std
-                print_norm_status = "NORMALIZED" if i == 0 else ""
+            # Forward pass with training normalization (always applied)
+            model_input = (input_tensor - wave_mean) / wave_std
+            print_norm_status = "NORMALIZED" if i == 0 else ""
                 
             if print_norm_status:
                 print(f"📊 Input type: {print_norm_status}")
@@ -281,7 +326,7 @@ class SimpleActivationMaximizer:
                 'iterations': iterations,
                 'learning_rate': learning_rate,
                 'use_real_data_init': use_real_data_init,
-                'skip_normalization': skip_normalization,
+                'dataset_name': self.dataset_name,
                 'final_activation': final_activation,
                 'loss_reduction': loss_reduction,
                 'grad_variation': grad_variation
@@ -308,25 +353,15 @@ class SimpleActivationMaximizer:
         # Create main figure with multiple panels - 3 rows for 500 iterations
         fig = plt.figure(figsize=(20, 15))
         
-        # Get normalization statistics for proper visualization
-        dataset_path = "data/wave_dataset_analysis_20samples.h5"
-        try:
-            import sys
-            from pathlib import Path as PathLib
-            sys.path.append(str(PathLib(__file__).parent.parent.parent))
-            from src.data.wave_dataset import WaveDataset
-            temp_dataset = WaveDataset(dataset_path, normalize_wave_fields=True)
-            wave_mean = temp_dataset.wave_mean
-            wave_std = temp_dataset.wave_std
-        except:
-            wave_mean = 0.000460
-            wave_std = 0.020842
+        # Use the same training normalization used during optimization
+        wave_mean = self.wave_mean
+        wave_std = self.wave_std
 
         # Panel 1: Initial vs Final patterns (in model input space)
         ax1 = plt.subplot(3, 4, 1)
         initial_raw = results['initial_pattern'][0, 0].cpu().numpy()
         # Show normalized version that model actually sees
-        initial_normalized = (initial_raw - wave_mean) / wave_std if not config['skip_normalization'] else initial_raw
+        initial_normalized = (initial_raw - wave_mean) / wave_std
         im1 = ax1.imshow(initial_normalized, cmap='RdBu_r', interpolation='nearest')
         ax1.set_title('Initial Pattern\n(Model Input Space)', fontweight='bold')
         ax1.set_xticks([])
@@ -336,7 +371,7 @@ class SimpleActivationMaximizer:
         ax2 = plt.subplot(3, 4, 2)
         final_raw = results['best_pattern'][0, 0].cpu().numpy()
         # Show normalized version that model actually sees
-        final_normalized = (final_raw - wave_mean) / wave_std if not config['skip_normalization'] else final_raw
+        final_normalized = (final_raw - wave_mean) / wave_std
         im2 = ax2.imshow(final_normalized, cmap='RdBu_r', interpolation='nearest')
         ax2.set_title('Final Optimized Pattern\n(Model Input Space)', fontweight='bold')
         ax2.set_xticks([])
@@ -353,7 +388,7 @@ class SimpleActivationMaximizer:
                 step_data = evolution_data[i]
                 pattern_raw = step_data['pattern'][0, 0].cpu().numpy()
                 # Show normalized version that model actually sees
-                pattern_normalized = (pattern_raw - wave_mean) / wave_std if not config['skip_normalization'] else pattern_raw
+                pattern_normalized = (pattern_raw - wave_mean) / wave_std
                 
                 im = ax.imshow(pattern_normalized, cmap='RdBu_r', interpolation='nearest')
                 ax.set_title(f"Step {step_data['iteration']}\nAct: {step_data['activation']:.1f}", 
@@ -410,7 +445,7 @@ class SimpleActivationMaximizer:
             'Loss Reduction': f"{config['loss_reduction']:.4f}",
             'Gradient Variation': f"{config['grad_variation']:.6f}",
             'Real Data Init': '✅' if config['use_real_data_init'] else '❌',
-            'Skip Normalization': '✅' if config['skip_normalization'] else '❌',
+            'Dataset': self.dataset_name,
             'Gradients Varying': '✅' if config['grad_variation'] > 1e-6 else '❌'
         }
         
@@ -420,7 +455,7 @@ class SimpleActivationMaximizer:
         ax6.set_title('Summary', fontweight='bold')
         
         # Main title
-        norm_status = "NO NORMALIZATION" if config['skip_normalization'] else "WITH NORMALIZATION"
+        norm_status = "WITH NORMALIZATION"
         init_status = "REAL DATA" if config['use_real_data_init'] else "RANDOM"
         
         fig.suptitle(f'Comprehensive Activation Maximization\n'
@@ -432,8 +467,6 @@ class SimpleActivationMaximizer:
         
         # Save plot
         filename = f"comprehensive_layer_{config['layer_name']}_filter_{config['filter_idx']:02d}"
-        if config['skip_normalization']:
-            filename += "_NO_NORM"
         if config['use_real_data_init']:
             filename += "_REAL_INIT"
         filename += ".png"

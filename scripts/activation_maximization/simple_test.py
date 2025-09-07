@@ -10,7 +10,8 @@ import sys
 from pathlib import Path
 import torch
 
-sys.path.append(str(Path(__file__).parent.parent.parent / "src"))
+# Ensure project root is on sys.path so imports like 'src.*' resolve
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from src.activation_maximization.simple_activation_max import (
     SimpleActivationMaximizer
@@ -122,14 +123,19 @@ def main():
     # Create layer-specific save directory
     layer_save_dir = f"experiments/activation_maximization/comprehensive/layer_{layer_idx}"
     
-    # Load a sample from the dataset
+    # Load a sample from the analysis dataset (RAW), then normalize with TRAINING stats
     dataset_path = "data/wave_dataset_analysis_20samples.h5"
-    dataset = WaveDataset(dataset_path, normalize_wave_fields=True)
+    raw_dataset = WaveDataset(dataset_path, normalize_wave_fields=False)
     
     # Use a fixed sample (sample 0) for consistency
     sample_idx = 0
-    wave_field, coordinates = dataset[sample_idx]
-    sample_tensor = wave_field.to(device)  # Already has correct dimensions [1, 1, H, W]
+    wave_field, coordinates = raw_dataset[sample_idx]
+    wave_field = wave_field.to(device)
+    
+    # Normalize with training stats (consistent with AM/inference)
+    norm_resolver = SimpleActivationMaximizer(model, device, model_path=str(model_path))
+    wave_mean, wave_std = norm_resolver.wave_mean, norm_resolver.wave_std
+    sample_tensor = (wave_field - wave_mean) / wave_std
     
     print(f"🌊 Using sample {sample_idx} as reference and initialization")
     print(f"📊 Sample coordinates: x={coordinates[0]:.1f}, "
@@ -140,7 +146,8 @@ def main():
                                        sample_tensor, top_k=5)
     
     # Setup maximizer
-    maximizer = SimpleActivationMaximizer(model, device)
+    # Pass model_path so the maximizer can infer T250/T500 stats and normalize accordingly
+    maximizer = SimpleActivationMaximizer(model, device, model_path=str(model_path))
     maximizer.register_hook("target_layer", target_layer)
     
     try:
@@ -160,7 +167,6 @@ def main():
                 filter_idx=filter_idx,
                 iterations=500,
                 learning_rate=0.01,
-                skip_normalization=False,
                 use_real_data_init=True,
                 save_dir=layer_save_dir
             )
