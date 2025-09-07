@@ -1,0 +1,19 @@
+{
+  "layer_idx": 36,
+  "filter_idx": 30,
+  "iterations": 1000,
+  "learning_rate": 0.005,
+  "tv_reg": 0.0001,
+  "l2_reg": 0.0001,
+  "final_activation": 2683.51904296875,
+  "final_target_loss": -2683.51904296875,
+  "final_suppression_loss": 979.379150390625,
+  "final_tv_loss": 7.361968517303467,
+  "final_l2_loss": 22.66010093688965,
+  "loss_reduction": 1526.2210998535156,
+  "grad_variation": 0.26123546560555816,
+  "loss_slope_lastk": -1.6206742591660495,
+  "loss_std_lastk": 93.56850752995814,
+  "grad_mean_lastk": 3.5599118781089785,
+  "converged": false
+}

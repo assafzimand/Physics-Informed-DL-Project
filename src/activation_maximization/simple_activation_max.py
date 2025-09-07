@@ -145,7 +145,8 @@ class SimpleActivationMaximizer:
                        save_dir: Optional[str] = None,
                        init_tensor: Optional[torch.Tensor] = None,
                        tv_reg: float = 0.0,
-                       l2_reg: float = 0.0) -> Dict[str, Any]:
+                       l2_reg: float = 0.0,
+                       activation_mode: str = 'mean_abs') -> Dict[str, Any]:
         """
         Comprehensive activation maximization with detailed monitoring and plotting.
         
@@ -162,6 +163,7 @@ class SimpleActivationMaximizer:
             init_tensor: Specific tensor to use for initialization (overrides use_real_data_init)
             tv_reg: Weight for Total Variation regularization for smoothness.
             l2_reg: Weight for L2 regularization on the input (amplitude control).
+            activation_mode: One of {'mean_abs','mean','l2'} for per-filter activation measure.
             
         Returns:
             Dictionary with comprehensive results including patterns, monitoring data, plots
@@ -176,6 +178,7 @@ class SimpleActivationMaximizer:
             print(f"🎨 Smoothness (TV Regularization): λ={tv_reg}")
         if l2_reg > 0:
             print(f"🧰 Amplitude (L2 on input): λ={l2_reg}")
+        print(f"🧮 Activation measure: {activation_mode}")
         
         # Load real data if requested
         wave_samples = None
@@ -263,23 +266,24 @@ class SimpleActivationMaximizer:
             layer_activation = self.activations[layer_name]  # [batch, filters, height, width]
             target_activation = layer_activation[:, filter_idx]  # [batch, height, width]
             
-            # Compute mean absolute activations for all filters in the layer
-            # Since we're hooking Conv2D layers (before ReLU), values can be negative
-            # Use mean(abs(.)) to capture activation strength regardless of sign
+            # Compute per-filter activation scores according to activation_mode
             batch_size, num_filters = layer_activation.shape[:2]
-            filter_means = layer_activation.abs().mean(dim=(2, 3))  # [batch, filters] - mean abs per filter
+            if activation_mode == 'mean':
+                filter_scores = layer_activation.mean(dim=(2, 3))
+            elif activation_mode == 'l2':
+                flat = layer_activation.view(batch_size, num_filters, -1)
+                filter_scores = torch.norm(flat, dim=2)
+            else:  # 'mean_abs' (default)
+                filter_scores = layer_activation.abs().mean(dim=(2, 3))
             
-            # Target filter mean activation (maximize)
-            target_mean = filter_means[:, filter_idx]  # [batch]
-            
-            # Other filters mean activations (minimize)
+            target_score = filter_scores[:, filter_idx]
             other_filter_mask = torch.ones(num_filters, dtype=torch.bool, device=layer_activation.device)
             other_filter_mask[filter_idx] = False
-            other_filter_means = filter_means[:, other_filter_mask]  # [batch, num_filters-1]
+            other_scores = filter_scores[:, other_filter_mask]
             
             # Loss: maximize target filter mean activation, minimize other filter mean activations
-            target_loss = -target_mean.mean()  # Negative because we want to maximize
-            suppression_loss = other_filter_means.mean()  # Positive because we want to minimize
+            target_loss = -target_score.mean()  # Negative because we want to maximize
+            suppression_loss = other_scores.mean()  # Positive because we want to minimize
             
             # Total Variation (on the input image, not normalized)
             tv_loss = self.total_variation_loss(input_tensor) if tv_reg > 0 else torch.tensor(0.0, device=self.device)
@@ -298,7 +302,7 @@ class SimpleActivationMaximizer:
                 
                 monitoring_data['iteration'].append(i)
                 monitoring_data['loss'].append(total_loss.item())
-                monitoring_data['activation'].append(-target_loss.item())  # Target activation (positive)
+                monitoring_data['activation'].append(-target_loss.item())  # Target activation proxy (positive)
                 monitoring_data['target_loss'].append(target_loss.item())  # Target loss term (negative)
                 monitoring_data['suppression_loss'].append(suppression_loss.item())  # Suppression loss term (positive)
                 monitoring_data['tv_loss'].append(tv_loss.item())

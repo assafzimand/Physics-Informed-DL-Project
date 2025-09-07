@@ -12,10 +12,11 @@ sample_idx: 0          # fixed sample used as init_tensor (RAW)
 # Grid
 grid:
   # Full grid sweep
-  learning_rates: [0.005, 0.01, 0.02]
+  learning_rates: [0.0005, 0.001, 0.005]
   iterations: [500, 1000]
-  tv_regs: [0.0, 1.0e-5, 1.0e-4, 5.0e-4]
-  l2_regs: [0.0, 1.0e-6, 1.0e-5, 1.0e-4]
+  tv_regs: [5.0e-4, 1.0e-3, 2.0e-3, 5.0e-3]
+  l2_regs: [1.0e-4, 5.0e-4, 1.0e-3, 2.0e-3]
+  activation_modes: [mean_abs, mean, l2]
 
 # Convergence criteria (evaluated over last K iterations)
 convergence:

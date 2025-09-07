@@ -136,6 +136,7 @@ def run_one(model: torch.nn.Module,
             save_dir=str(out_dir),
             tv_reg=float(params.get('tv_reg', 0.0)),
             l2_reg=float(params.get('l2_reg', 0.0)),
+            activation_mode=str(params.get('activation_mode', 'mean_abs')),
         )
 
         mon = results['monitoring_data']
@@ -156,6 +157,7 @@ def run_one(model: torch.nn.Module,
             'learning_rate': cfg['learning_rate'],
             'tv_reg': cfg.get('tv_reg', 0.0),
             'l2_reg': cfg.get('l2_reg', 0.0),
+            'activation_mode': params.get('activation_mode', 'mean_abs'),
             'final_activation': cfg['final_activation'],
             'final_target_loss': cfg['final_target_loss'],
             'final_suppression_loss': cfg['final_suppression_loss'],
@@ -261,6 +263,7 @@ def main():
     iterations_list = grid.get('iterations', [500])
     tv_regs = grid.get('tv_regs', [0.0])
     l2_regs = grid.get('l2_regs', [0.0])
+    activation_modes = grid.get('activation_modes', ['mean_abs'])
 
     # Convergence thresholds
     convergence_cfg = cfg.get('convergence', {
@@ -277,7 +280,7 @@ def main():
     # Master CSV
     csv_path = base_out / "results.csv"
     csv_fields = [
-        'layer_idx', 'filter_idx', 'iterations', 'learning_rate', 'tv_reg', 'l2_reg',
+        'layer_idx', 'filter_idx', 'iterations', 'learning_rate', 'tv_reg', 'l2_reg', 'activation_mode',
         'final_activation', 'final_target_loss', 'final_suppression_loss', 'final_tv_loss',
         'final_l2_loss',
         'loss_reduction', 'grad_variation',
@@ -292,19 +295,21 @@ def main():
         for lr in learning_rates:
             for tv in tv_regs:
                 for l2 in l2_regs:
+                    for act in activation_modes:
                     run_params = {
                         'iterations': iters,
                         'learning_rate': lr,
                         'tv_reg': tv,
                         'l2_reg': l2,
+                        'activation_mode': act,
                         'filter_idx': top_filter_idx,
                         'convergence': convergence_cfg,
                     }
-                    run_dir = base_out / f"run_{run_idx:03d}_it{iters}_lr{lr}_tv{tv}_l2{l2}"
+                    run_dir = base_out / f"run_{run_idx:03d}_it{iters}_lr{lr}_tv{tv}_l2{l2}_act{act}"
 
                     print(f"\n===== RUN {run_idx} =====")
                     print(f"Layer {layer_idx} ({layer_name}) | filter {top_filter_idx}")
-                    print(f"iters={iters}, lr={lr}, tv_reg={tv}, l2_reg={l2}")
+                    print(f"iters={iters}, lr={lr}, tv_reg={tv}, l2_reg={l2}, act={act}")
                     summary = run_one(model, ckpt_path, target_layer, layer_idx, init_tensor, device, run_params, run_dir)
 
                     # Append to CSV
