@@ -251,20 +251,8 @@ def main():
             raise ValueError(f"layer_idx out of range (0..{len(conv_layers)-1}): {layer_choice}")
         selected_layers = [conv_layers[layer_choice]]
     top_k_filters = int(selection.get('top_k_filters', 1))
-
-    # Determine filter index: if not provided or set to 'auto'/-1, pick most active
+    # Optional explicit filter index for legacy path; otherwise we'll rank per-layer below
     filter_idx_cfg = cfg.get('filter_idx', 'auto')
-    if isinstance(filter_idx_cfg, str) and filter_idx_cfg.lower() == 'auto' or (
-        isinstance(filter_idx_cfg, int) and filter_idx_cfg < 0
-    ):
-        # Use training stats to normalize for ranking (consistent with AM)
-        stats_resolver = SimpleActivationMaximizer(model, device, model_path=str(ckpt_path))
-        wave_mean, wave_std = stats_resolver.wave_mean, stats_resolver.wave_std
-        top_filter_idx = get_top_active_filter(model, target_layer, device, init_tensor, wave_mean, wave_std)
-        print(f"🔎 Auto-selected top active filter: {top_filter_idx}")
-    else:
-        top_filter_idx = int(filter_idx_cfg)
-        print(f"🎯 Using configured filter index: {top_filter_idx}")
 
     # Grid
     grid = cfg.get('grid', {})
@@ -315,20 +303,25 @@ def main():
             # Rank filters on this layer for this sample
             top_filters: List[int] = []
             try:
-                with torch.no_grad():
-                    norm_sample = (init_tensor - wave_mean) / wave_std
-                    # capture activations and rank by mean(abs)
-                    activations: Dict[str, torch.Tensor] = {}
-                    def hook_fn(m, i, o):
-                        activations['t'] = o.detach()
-                    h = target_layer.register_forward_hook(hook_fn)
-                    _ = model(norm_sample)
-                    h.remove()
-                    layer_out = activations.get('t')
-                    if layer_out is None:
-                        raise RuntimeError('Failed to capture activations for ranking')
-                    scores = layer_out.abs().mean(dim=(0, 2, 3))
-                    top_filters = torch.argsort(scores, descending=True)[:top_k_filters].cpu().tolist()
+                # If an explicit filter is configured (non-auto), respect it
+                if not (isinstance(filter_idx_cfg, str) and filter_idx_cfg.lower() == 'auto') \
+                   and not (isinstance(filter_idx_cfg, int) and filter_idx_cfg < 0):
+                    top_filters = [int(filter_idx_cfg)]
+                else:
+                    with torch.no_grad():
+                        norm_sample = (init_tensor - wave_mean) / wave_std
+                        # capture activations and rank by mean(abs)
+                        activations: Dict[str, torch.Tensor] = {}
+                        def hook_fn(m, i, o):
+                            activations['t'] = o.detach()
+                        h = target_layer.register_forward_hook(hook_fn)
+                        _ = model(norm_sample)
+                        h.remove()
+                        layer_out = activations.get('t')
+                        if layer_out is None:
+                            raise RuntimeError('Failed to capture activations for ranking')
+                        scores = layer_out.abs().mean(dim=(0, 2, 3))
+                        top_filters = torch.argsort(scores, descending=True)[:top_k_filters].cpu().tolist()
             except Exception as e:
                 print(f"⚠️ Ranking failed for layer {layer_internal_idx}: {e}")
                 top_filters = [0]
