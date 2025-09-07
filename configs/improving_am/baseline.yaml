@@ -11,15 +11,10 @@ sample_idx: 0          # fixed sample used as init_tensor (RAW)
 
 # Grid
 grid:
-  # Minimal single-run grid for pipeline smoke test
-  learning_rates: [0.01]
-  iterations: [500]
-  tv_regs: [1.0e-4]
-
-  # Extended grid examples (uncomment to expand)
-  # learning_rates: [0.005, 0.01, 0.02]
-  # iterations: [500, 1000]
-  # tv_regs: [0.0, 1.0e-5, 1.0e-4, 5.0e-4]
+  # Full grid sweep
+  learning_rates: [0.005, 0.01, 0.02]
+  iterations: [500, 1000]
+  tv_regs: [0.0, 1.0e-5, 1.0e-4, 5.0e-4]
 
 # Convergence criteria (evaluated over last K iterations)
 convergence:
