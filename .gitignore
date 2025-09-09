@@ -44,5 +44,16 @@ results/grid_search_*/downloaded_*
 
 # Activation Maximization results
 experiments/activation_maximization/improving_am_results/
-experiments/improving_am/
- 
+# Ignore MLflow runs (entire trees)
+mlruns/
+**/mlruns/
+
+# Ignore heavy per-run AM outputs, keep top-level summaries (CSV/JSON)
+experiments/improving_am/**/run_*/
+experiments/improving_am/**/filters/
+experiments/activation_maximization/**/run_*/
+experiments/activation_maximization/**/filters/
+
+# Ignore bulky archives/logs under experiments
+experiments/**/*.zip
+experiments/**/*.log
