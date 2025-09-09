@@ -9,12 +9,20 @@ Enhanced with comprehensive monitoring, plotting, and debugging capabilities.
 """
 
 import torch
+import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
 import h5py
 import random
 from pathlib import Path
 from typing import Tuple, List, Optional, Dict, Any
+
+import sys
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+except Exception:
+    pass
 
 
 class SimpleActivationMaximizer:
@@ -146,6 +154,7 @@ class SimpleActivationMaximizer:
                        init_tensor: Optional[torch.Tensor] = None,
                        tv_reg: float = 0.0,
                        l2_reg: float = 0.0,
+                       suppression_weight: float = 1.0,
                        activation_mode: str = 'mean_abs') -> Dict[str, Any]:
         """
         Comprehensive activation maximization with detailed monitoring and plotting.
@@ -163,7 +172,7 @@ class SimpleActivationMaximizer:
             init_tensor: Specific tensor to use for initialization (overrides use_real_data_init)
             tv_reg: Weight for Total Variation regularization for smoothness.
             l2_reg: Weight for L2 regularization on the input (amplitude control).
-            activation_mode: One of {'mean_abs','mean','l2'} for per-filter activation measure.
+            activation_mode: One of {'mean_abs','mean','l2','post_relu_mean'} for per-filter activation measure.
             
         Returns:
             Dictionary with comprehensive results including patterns, monitoring data, plots
@@ -273,6 +282,9 @@ class SimpleActivationMaximizer:
             elif activation_mode == 'l2':
                 flat = layer_activation.view(batch_size, num_filters, -1)
                 filter_scores = torch.norm(flat, dim=2)
+            elif activation_mode == 'post_relu_mean':
+                # Apply ReLU to pre-activation feature maps, then take mean
+                filter_scores = F.relu(layer_activation).mean(dim=(2, 3))
             else:  # 'mean_abs' (default)
                 filter_scores = layer_activation.abs().mean(dim=(2, 3))
             
@@ -281,7 +293,7 @@ class SimpleActivationMaximizer:
             other_filter_mask[filter_idx] = False
             other_scores = filter_scores[:, other_filter_mask]
             
-            # Loss: maximize target filter mean activation, minimize other filter mean activations
+            # Loss: maximize target filter activation, minimize other filters with weight
             target_loss = -target_score.mean()  # Negative because we want to maximize
             suppression_loss = other_scores.mean()  # Positive because we want to minimize
             
@@ -289,7 +301,7 @@ class SimpleActivationMaximizer:
             tv_loss = self.total_variation_loss(input_tensor) if tv_reg > 0 else torch.tensor(0.0, device=self.device)
             l2_loss = (input_tensor ** 2).mean() if l2_reg > 0 else torch.tensor(0.0, device=self.device)
 
-            total_loss = target_loss + suppression_loss + tv_reg * tv_loss + l2_reg * l2_loss
+            total_loss = target_loss + suppression_weight * suppression_loss + tv_reg * tv_loss + l2_reg * l2_loss
             
             # Backward pass
             total_loss.backward()
@@ -391,6 +403,7 @@ class SimpleActivationMaximizer:
                 'final_l2_loss': final_l2_loss,
                 'tv_reg': tv_reg,
                 'l2_reg': l2_reg,
+                'suppression_weight': suppression_weight,
                 'loss_reduction': loss_reduction,
                 'grad_variation': grad_variation
             }

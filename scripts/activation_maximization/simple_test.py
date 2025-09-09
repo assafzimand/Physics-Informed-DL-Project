@@ -8,6 +8,7 @@ Uses the same real sample as initialization for all filter optimizations.
 
 import sys
 from pathlib import Path
+import argparse
 import torch
 
 # Ensure project root is on sys.path so imports like 'src.*' resolve
@@ -21,7 +22,7 @@ from src.models.wave_source_resnet import create_wave_source_model
 from src.data.wave_dataset import WaveDataset
 
 
-def get_top_active_filters(model, device, layer, sample_tensor, top_k=5):
+def get_top_active_filters(model, device, layer, sample_tensor, top_k=5, activation_mode: str = "mean_abs"):
     """
     Find the top K most active filters in a given layer for a specific sample.
     
@@ -52,11 +53,19 @@ def get_top_active_filters(model, device, layer, sample_tensor, top_k=5):
         with torch.no_grad():
             _ = model(sample_tensor)
         
-        # Get activations and compute filter-wise mean activation
+        # Get activations and compute filter-wise activation per requested mode (pre-ReLU)
         layer_output = activations['target']  # Shape: (1, C, H, W)
-        
-        # Compute mean activation per filter across spatial dimensions
-        filter_activations = layer_output.mean(dim=(0, 2, 3))  # Shape: (C,)
+        if activation_mode == "mean_abs":
+            filter_activations = layer_output.abs().mean(dim=(0, 2, 3))  # [C]
+        elif activation_mode == "mean":
+            filter_activations = layer_output.mean(dim=(0, 2, 3))  # [C]
+        elif activation_mode == "l2":
+            # L2 norm over spatial dims; average over batch
+            filter_activations = (layer_output.pow(2).sum(dim=(2, 3)).sqrt()).mean(dim=0)  # [C]
+        elif activation_mode == "post_relu_mean":
+            filter_activations = torch.relu(layer_output).mean(dim=(0, 2, 3))
+        else:
+            raise ValueError(f"Unsupported activation_mode for ranking: {activation_mode}")
         
         # Get top K filter indices
         top_indices = torch.argsort(filter_activations, descending=True)[:top_k].cpu().numpy()
@@ -78,6 +87,17 @@ def main():
     print("🧪 INTERACTIVE ACTIVATION MAXIMIZATION ANALYSIS")
     print("=" * 60)
     
+    # CLI args
+    parser = argparse.ArgumentParser(description="Interactive AM test runner")
+    parser.add_argument("--iterations", type=int, default=500)
+    parser.add_argument("--learning_rate", type=float, default=0.01)
+    parser.add_argument("--tv_reg", type=float, default=1e-4)
+    parser.add_argument("--l2_reg", type=float, default=0.0)
+    parser.add_argument("--activation_mode", type=str, default="mean_abs", choices=["mean_abs", "mean", "l2", "post_relu_mean"]) 
+    parser.add_argument("--sample_idx", type=int, default=0)
+    parser.add_argument("--filter_idx", type=int, default=-1, help="If >=0, optimize this specific filter and skip ranking")
+    args = parser.parse_args()
+
     # Load model
     cv_results_path = (Path(__file__).parent.parent.parent / 
                       "experiments" / "cv_full")
@@ -127,13 +147,18 @@ def main():
     dataset_path = "data/wave_dataset_analysis_20samples.h5"
     raw_dataset = WaveDataset(dataset_path, normalize_wave_fields=False)
     
-    # Use a fixed sample (sample 0) for consistency
-    sample_idx = 0
+    # Use a fixed sample (can be overridden by CLI)
+    sample_idx = int(args.sample_idx)
     wave_field, coordinates = raw_dataset[sample_idx]
     wave_field = wave_field.to(device)
     
     # Normalize with training stats (consistent with AM/inference)
     norm_resolver = SimpleActivationMaximizer(model, device, model_path=str(model_path))
+    # Enforce dataset-model T-tag alignment (from dataset path string)
+    ds_path = dataset_path.lower()
+    ds_tag = 'T250' if 't250' in ds_path else ('T500' if 't500' in ds_path else None)
+    if ds_tag is not None and ds_tag != norm_resolver.dataset_name:
+        raise ValueError(f"Dataset/model mismatch: dataset appears to be {ds_tag} but model normalization is {norm_resolver.dataset_name}.")
     wave_mean, wave_std = norm_resolver.wave_mean, norm_resolver.wave_std
     sample_tensor = (wave_field - wave_mean) / wave_std
     
@@ -141,9 +166,14 @@ def main():
     print(f"📊 Sample coordinates: x={coordinates[0]:.1f}, "
           f"y={coordinates[1]:.1f}")
     
-    # Find top 5 active filters
-    top_filters = get_top_active_filters(model, device, target_layer, 
-                                       sample_tensor, top_k=5)
+    # Determine filters to optimize: either explicit filter or ranked top-5
+    if int(args.filter_idx) >= 0:
+        top_filters = [int(args.filter_idx)]
+        print(f"📌 Using explicit filter index: {top_filters[0]} (skip ranking)")
+    else:
+        top_filters = get_top_active_filters(
+            model, device, target_layer, sample_tensor, top_k=5, activation_mode=str(args.activation_mode)
+        )
     
     # Setup maximizer
     # Pass model_path so the maximizer can infer T250/T500 stats and normalize accordingly
@@ -158,18 +188,21 @@ def main():
         for i, filter_idx in enumerate(top_filters):
             print(f"\n🎯 Optimizing filter {filter_idx} ({i+1}/5)...")
             
-            # Create a copy of the sample for initialization
-            init_sample = sample_tensor.clone().detach()
+            # RAW init tensor (engine will normalize internally with training stats)
+            init_tensor = wave_field.clone().detach()
             
             # Run optimization with the layer-specific save directory
             results = maximizer.optimize_filter(
                 layer_name="target_layer",
                 filter_idx=filter_idx,
-                iterations=500,
-                learning_rate=0.01,
-                use_real_data_init=True,
+                iterations=int(args.iterations),
+                learning_rate=float(args.learning_rate),
+                use_real_data_init=False,
+                init_tensor=init_tensor,
                 save_dir=layer_save_dir,
-                tv_reg=1e-4
+                tv_reg=float(args.tv_reg),
+                l2_reg=float(args.l2_reg),
+                activation_mode=str(args.activation_mode),
             )
             
             print(f"✅ Filter {filter_idx} complete! Final activation: "

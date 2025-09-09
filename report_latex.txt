@@ -1,0 +1,148 @@
+\documentclass[11pt]{article}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\title{Physics-Informed Deep Learning for Wave-Source Localization}
+\author{Assaf Zimand}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This project was done as part of an academic course on the mathematical foundations of ML and carried out independently.
+The task was to build a deep learning pipeline that can localize the source of a 2D wave field.
+The motivation was to connect ideas from wave physics with modern deep learning, and to explore how inner layers behave on physics-related problems using interpretation tools such as feature extraction and activation maximization.
+\end{abstract}
+
+\section{Problem and Data}
+The core task is: given a $128 \times 128$ snapshot of a wave field, predict the $(x,y)$ coordinates of the source that generated it.
+
+The datasets were generated specifically for this project. Using a numerical wave simulator (a finite-difference time-domain solver of the 2D acoustic wave equation with homogeneous wave speed), we excited a point source at a chosen grid location and recorded the resulting steady-state field. Each dataset is stored in HDF5 format and contains:
+\begin{itemize}
+    \item \texttt{wave\_fields}: $(N, 128, 128)$ arrays of simulated waves.
+    \item \texttt{source\_coords}: $(N,2)$ arrays of true source positions.
+    \item \texttt{wave\_mean}, \texttt{wave\_std} for normalization.
+\end{itemize}
+
+There are two dataset regimes:
+\begin{itemize}
+    \item \textbf{T250}: shorter simulation length (250 steps).
+    \item \textbf{T500}: longer simulation length (500 steps).
+\end{itemize}
+
+A strict rule is enforced: if you use a T500 dataset, you must use a T500-trained model (and the same for T250). The tools will raise an error if this is not followed.
+
+\begin{figure}[h]
+\centering
+\fbox{\includegraphics[width=0.7\linewidth]{docs/figures/sample_wave_prediction.png}}
+\caption{Sample input with predicted vs ground-truth source (placeholder).}
+\end{figure}
+
+\section{Model}
+The chosen model is a small residual network, called \textbf{WaveSourceMiniResNet}. The idea was to start small but still benefit from the main strengths of ResNet: skip connections, stability in training, and good gradient flow. Right from the beginning, this model produced solid results, so no other architectures were required.
+
+For a compact architectural description, see the project document (\href{docs/model_overview.pdf}{model\_overview.pdf}); for a schematic visualization see \href{docs/model_visualization.png}{model\_visualization.png}.
+\begin{itemize}
+    \item Input: normalized $(128 \times 128)$ wave field.
+    \item Layers: Conv2D blocks with ReLU activations, residual skips.
+    \item Output: predicted $(x,y)$ source coordinates.
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\fbox{\includegraphics[width=0.7\linewidth]{experiments/plots/model_architecture_placeholder.png}}
+\caption{Placeholder for model architecture visualization.}
+\end{figure}
+**the model visualization is up to here**
+
+\section{Training and Evaluation Journey}
+The training process went through several stages:
+\begin{enumerate}
+    \item Local proof-of-concept runs to make sure everything worked.
+    \item Google Colab (GPU) to run larger experiments efficiently, including grid searches and 5-fold cross-validation.
+    \item 5-fold cross-validation (\texttt{cv\_full}), which produced the best T500 model.
+    \item A separate T250 pipeline to demonstrate that the method generalizes across different temporal regimes (T250 vs T500).
+    \item Extra validation on newly generated, unseen datasets (the simulator can produce unlimited samples), to stress-test generalization.
+\end{enumerate}
+
+Representative figures in this section:
+\begin{itemize}
+    \item Grid search heatmaps/curves summarizing hyperparameter effects (learning rate, regularization, activation measure).
+    \item Cross-validation summary: per-fold metrics and the selected best model.
+    \item Training/validation curves for the best configuration.
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\fbox{\includegraphics[width=0.7\linewidth]{experiments/plots/grid_search_placeholder.png}}
+\caption{Placeholder for grid search results.}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\fbox{\includegraphics[width=0.7\linewidth]{experiments/plots/cv_summary_placeholder.png}}
+\caption{Placeholder for cross-validation summary.}
+\end{figure}
+
+\section{Failure Analysis}
+A detailed error analysis was performed to understand the model's predictions and limitations.  
+
+\begin{figure}[h]
+\centering
+\fbox{\includegraphics[width=0.7\linewidth]{experiments/plots/failure_analysis_placeholder.png}}
+\caption{Failure analysis grid: points colored by error percentile, with mean error per group.}
+\end{figure}
+
+It is very clear from these plots that the largest errors usually occur close to the borders of the image. This suggests the task is more difficult when the source is near the boundary, and the model may benefit from proportionally more training examples in these regions relative to mid-grid points.
+
+\section{Interpreting the Model}
+\subsection{Feature Extraction Analysis}
+Early layers pick up local wave textures. Later layers combine these signals into larger patterns. In many samples, the most active maps light up near the true source, which suggests the network uses cues around the source. This is a qualitative observation and should be tested more rigorously.
+
+\subsection{Activation Maximization}
+A unified pipeline for Activation Maximization (AM) was implemented:
+\begin{itemize}
+    \item Hooks on pre-ReLU activations (optionally apply ReLU inside the objective for post-activation measures).
+    \item Objective: maximize a chosen filter while optionally suppressing other filters in the same layer.
+    \item Regularizers: Total Variation (TV) and L2 on the input.
+    \item Activation measures supported: pre-ReLU mean, pre-ReLU mean\_abs, pre-ReLU L2, and post\_relu\_mean.
+    \item Optimization: forward a normalized sample, select layer/filter, then perform Adam steps on the input to minimize the total loss; we track convergence via loss slope/std and gradient magnitude.
+\end{itemize}
+
+We tested several combinations of activation measures, suppression weighting, and regularization strengths to find a stable and informative objective. The final combination used is \underline{\hspace{3cm}}.
+
+\begin{figure}[h]
+\centering
+\fbox{\includegraphics[width=0.7\linewidth]{experiments/plots/am_outcome_placeholder.png}}
+\caption{Representative Activation Maximization outcome.}
+\end{figure}
+
+\section{Final Results and Lessons Learned}
+\begin{itemize}
+    \item The T500 cross-validation model was the strongest performer.
+    \item Error analysis revealed that borders are the main weakness.
+    \item Activation Maximization gave interpretable visualizations of what the network focuses on.
+    \item Starting with a small ResNet-style model was a good choice: simple but powerful enough for this task.
+\end{itemize}
+
+\section{References}
+\begin{itemize}
+    \item Project repository: \url{https://github.com/assafzimand/Physics-Informed-DL-Project}
+\end{itemize}
+
+\end{document}
+
+% ---------------------
+% Image path checklist (upload to Overleaf)
+% docs/figures/sample_wave_prediction.png
+% experiments/plots/model_architecture_placeholder.png
+% experiments/plots/grid_search_placeholder.png
+% experiments/plots/cv_summary_placeholder.png
+% experiments/plots/failure_analysis_placeholder.png
+% experiments/plots/am_outcome_placeholder.png
+
+

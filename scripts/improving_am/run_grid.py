@@ -72,6 +72,16 @@ def resolve_model(model_path: str | None, device: torch.device) -> Tuple[torch.n
     return model.to(device).eval(), ckpt_path
 
 
+def infer_dataset_from_path(ds_path: str) -> str | None:
+    """Infer dataset tag ('T250'/'T500') from a dataset path string; None if ambiguous."""
+    p = ds_path.lower()
+    if 't250' in p:
+        return 'T250'
+    if 't500' in p:
+        return 'T500'
+    return None
+
+
 def get_conv_layers(model: torch.nn.Module) -> List[Tuple[int, str, torch.nn.Module]]:
     layers: List[Tuple[int, str, torch.nn.Module]] = []
     for idx, (name, module) in enumerate(model.named_modules()):
@@ -137,6 +147,7 @@ def run_one(model: torch.nn.Module,
             tv_reg=float(params.get('tv_reg', 0.0)),
             l2_reg=float(params.get('l2_reg', 0.0)),
             activation_mode=str(params.get('activation_mode', 'mean_abs')),
+            suppression_weight=float(params.get('suppression_weight', 1.0)),
         )
 
         mon = results['monitoring_data']
@@ -230,6 +241,14 @@ def main():
     # Load dataset once
     dataset_path = cfg.get('dataset_path', 'data/wave_dataset_analysis_20samples.h5')
     dataset = WaveDataset(dataset_path, normalize_wave_fields=False)
+
+    # Enforce dataset-model T-tag alignment
+    stats_resolver_for_check = SimpleActivationMaximizer(model, device, model_path=str(ckpt_path))
+    model_tag = stats_resolver_for_check.dataset_name  # 'T250' or 'T500'
+    ds_tag = infer_dataset_from_path(dataset_path) or infer_dataset_from_path(str(Path(dataset_path).name))
+    if ds_tag is not None and ds_tag != model_tag:
+        raise ValueError(f"Dataset/model mismatch: dataset appears to be {ds_tag} but model normalization is {model_tag}.\n"
+                         f"dataset_path={dataset_path}, model_ckpt={ckpt_path}")
     
     # Select layers for analysis
     conv_layers = get_conv_layers(model)
@@ -243,14 +262,38 @@ def main():
         selected_layers = conv_layers[-n:]
     elif mode == 'explicit':
         indices = selection.get('layer_indices', [])
-        selected_layers = [conv_layers[i] for i in indices if 0 <= i < len(conv_layers)]
+        raw_map_for_indices = selection.get('filters_by_layer', {}) or {}
+        # Case A: explicit indices refer to positions within conv_layers array
+        if indices:
+            selected_layers = [conv_layers[i] for i in indices if 0 <= i < len(conv_layers)]
+        else:
+            # Case B: infer by internal named_modules indices present as keys in filters_by_layer
+            try:
+                desired_internal_ids = set(int(k) for k in raw_map_for_indices.keys())
+            except Exception:
+                desired_internal_ids = set()
+            selected_layers = [entry for entry in conv_layers if entry[0] in desired_internal_ids]
     else:
         # fallback to single-layer legacy path
         layer_choice = int(cfg.get('layer_idx', 0))
         if not (0 <= layer_choice < len(conv_layers)):
             raise ValueError(f"layer_idx out of range (0..{len(conv_layers)-1}): {layer_choice}")
         selected_layers = [conv_layers[layer_choice]]
+
+    if not selected_layers:
+        raise RuntimeError(
+            "No layers selected. Check selection.mode, layer_indices, or filters_by_layer in the config."
+        )
     top_k_filters = int(selection.get('top_k_filters', 1))
+    # Optional explicit per-layer filters mapping: {"59": [56,123], "61": [18,167,...]}
+    raw_map = selection.get('filters_by_layer', {}) or {}
+    filters_by_layer = {}
+    for k, v in raw_map.items():
+        try:
+            li = int(k)
+            filters_by_layer[li] = [int(f) for f in v]
+        except Exception:
+            continue
     # Optional explicit filter index for legacy path; otherwise we'll rank per-layer below
     filter_idx_cfg = cfg.get('filter_idx', 'auto')
 
@@ -260,6 +303,7 @@ def main():
     iterations_list = grid.get('iterations', [500])
     tv_regs = grid.get('tv_regs', [0.0])
     l2_regs = grid.get('l2_regs', [0.0])
+    suppression_weights = grid.get('suppression_weights', [1.0])
     activation_modes = grid.get('activation_modes', ['mean_abs'])
     sample_indices = grid.get('sample_indices', [int(cfg.get('sample_idx', 0))])
 
@@ -300,65 +344,77 @@ def main():
         wave_mean, wave_std = stats_resolver.wave_mean, stats_resolver.wave_std
 
         for (layer_internal_idx, layer_name, target_layer) in selected_layers:
-            # Rank filters on this layer for this sample
-            top_filters: List[int] = []
-            try:
-                # If an explicit filter is configured (non-auto), respect it
-                if not (isinstance(filter_idx_cfg, str) and filter_idx_cfg.lower() == 'auto') \
-                   and not (isinstance(filter_idx_cfg, int) and filter_idx_cfg < 0):
-                    top_filters = [int(filter_idx_cfg)]
-                else:
-                    with torch.no_grad():
-                        norm_sample = (init_tensor - wave_mean) / wave_std
-                        # capture activations and rank by mean(abs)
-                        activations: Dict[str, torch.Tensor] = {}
-                        def hook_fn(m, i, o):
-                            activations['t'] = o.detach()
-                        h = target_layer.register_forward_hook(hook_fn)
-                        _ = model(norm_sample)
-                        h.remove()
-                        layer_out = activations.get('t')
-                        if layer_out is None:
-                            raise RuntimeError('Failed to capture activations for ranking')
-                        scores = layer_out.abs().mean(dim=(0, 2, 3))
-                        top_filters = torch.argsort(scores, descending=True)[:top_k_filters].cpu().tolist()
-            except Exception as e:
-                print(f"⚠️ Ranking failed for layer {layer_internal_idx}: {e}")
-                top_filters = [0]
+            # For each activation mode, rank filters using the SAME activation used for optimization
+            for act in activation_modes:
+                # Determine top filters for this act
+                try:
+                    # Highest priority: explicit per-layer filters mapping
+                    if layer_internal_idx in filters_by_layer:
+                        top_filters = filters_by_layer[layer_internal_idx]
+                    elif not (isinstance(filter_idx_cfg, str) and filter_idx_cfg.lower() == 'auto') \
+                       and not (isinstance(filter_idx_cfg, int) and filter_idx_cfg < 0):
+                        top_filters = [int(filter_idx_cfg)]
+                    else:
+                        with torch.no_grad():
+                            norm_sample = (init_tensor - wave_mean) / wave_std
+                            activations: Dict[str, torch.Tensor] = {}
+                            def hook_fn(m, i, o):
+                                activations['t'] = o.detach()
+                            h = target_layer.register_forward_hook(hook_fn)
+                            _ = model(norm_sample)
+                            h.remove()
+                            layer_out = activations.get('t')
+                            if layer_out is None:
+                                raise RuntimeError('Failed to capture activations for ranking')
+                            if act == 'mean_abs':
+                                scores = layer_out.abs().mean(dim=(0, 2, 3))
+                            elif act == 'mean':
+                                scores = layer_out.mean(dim=(0, 2, 3))
+                            elif act == 'l2':
+                                scores = (layer_out.pow(2).sum(dim=(2, 3)).sqrt()).mean(dim=0)
+                            elif act == 'post_relu_mean':
+                                scores = torch.relu(layer_out).mean(dim=(0, 2, 3))
+                            else:
+                                raise ValueError(f"Unsupported activation_mode for ranking: {act}")
+                            top_filters = torch.argsort(scores, descending=True)[:top_k_filters].cpu().tolist()
+                except Exception as e:
+                    print(f"⚠️ Ranking failed for layer {layer_internal_idx} (act={act}): {e}")
+                    top_filters = [0]
 
-            for filt in top_filters:
-                for iters in iterations_list:
-                    for lr in learning_rates:
-                        for tv in tv_regs:
-                            for l2 in l2_regs:
-                                for act in activation_modes:
-                                    run_params = {
-                                        'iterations': iters,
-                                        'learning_rate': lr,
-                                        'tv_reg': tv,
-                                        'l2_reg': l2,
-                                        'activation_mode': act,
-                                        'filter_idx': int(filt),
-                                        'convergence': convergence_cfg,
-                                    }
-                                    run_dir = base_out / (
-                                        f"run_{run_idx:04d}_s{sample_idx}_layer{layer_internal_idx}_f{filt}_it{iters}_lr{lr}_tv{tv}_l2{l2}_act{act}"
-                                    )
+                for filt in top_filters:
+                    for iters in iterations_list:
+                        for lr in learning_rates:
+                            for tv in tv_regs:
+                                for l2 in l2_regs:
+                                    for sup_w in suppression_weights:
+                                        run_params = {
+                                            'iterations': iters,
+                                            'learning_rate': lr,
+                                            'tv_reg': tv,
+                                            'l2_reg': l2,
+                                            'activation_mode': act,
+                                            'suppression_weight': sup_w,
+                                            'filter_idx': int(filt),
+                                            'convergence': convergence_cfg,
+                                        }
+                                        run_dir = base_out / (
+                                            f"run_{run_idx:04d}_s{sample_idx}_layer{layer_internal_idx}_f{filt}_it{iters}_lr{lr}_tv{tv}_l2{l2}_sup{sup_w}_act{act}"
+                                        )
 
-                                    print(f"\n===== RUN {run_idx} =====")
-                                    print(f"Sample {sample_idx} | Layer {layer_internal_idx} ({layer_name}) | filter {filt}")
-                                    print(f"iters={iters}, lr={lr}, tv_reg={tv}, l2_reg={l2}, act={act}")
-                                    summary = run_one(model, ckpt_path, target_layer, layer_internal_idx, init_tensor, device, run_params, run_dir)
+                                        print(f"\n===== RUN {run_idx} =====")
+                                        print(f"Sample {sample_idx} | Layer {layer_internal_idx} ({layer_name}) | filter {filt}")
+                                        print(f"iters={iters}, lr={lr}, tv_reg={tv}, l2_reg={l2}, sup_w={sup_w}, act={act}")
+                                        summary = run_one(model, ckpt_path, target_layer, layer_internal_idx, init_tensor, device, run_params, run_dir)
 
-                                    # Augment summary with identifiers
-                                    summary['layer_name'] = layer_name
-                                    summary['sample_idx'] = int(sample_idx)
+                                        # Augment summary with identifiers
+                                        summary['layer_name'] = layer_name
+                                        summary['sample_idx'] = int(sample_idx)
 
-                                    with open(csv_path, 'a', newline='') as f:
-                                        writer = csv.DictWriter(f, fieldnames=csv_fields)
-                                        writer.writerow({k: summary.get(k, '') for k in csv_fields})
+                                        with open(csv_path, 'a', newline='') as f:
+                                            writer = csv.DictWriter(f, fieldnames=csv_fields)
+                                            writer.writerow({k: summary.get(k, '') for k in csv_fields})
 
-                                    run_idx += 1
+                                        run_idx += 1
 
     # Save config snapshot
     with open(base_out / "config_used.json", 'w') as f:

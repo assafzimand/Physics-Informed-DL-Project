@@ -23,7 +23,7 @@ from src.models.wave_source_resnet import create_wave_source_model
 from src.data.wave_dataset import WaveDataset
 
 
-def get_top_active_filters(model, device, layer, sample_tensor, top_k=10):
+def get_top_active_filters(model, device, layer, sample_tensor, top_k=10, activation_mode: str = "mean_abs"):
     """
     Find the top K most active filters in a given layer for a specific sample.
     
@@ -54,11 +54,18 @@ def get_top_active_filters(model, device, layer, sample_tensor, top_k=10):
         with torch.no_grad():
             _ = model(sample_tensor)
         
-        # Get activations and compute filter-wise mean activation
+        # Get activations and compute filter-wise activation using requested mode (pre-ReLU)
         layer_output = activations['target']  # Shape: (1, C, H, W)
-        
-        # Compute mean activation per filter across spatial dimensions
-        filter_activations = layer_output.mean(dim=(0, 2, 3))  # Shape: (C,)
+        if activation_mode == "mean_abs":
+            filter_activations = layer_output.abs().mean(dim=(0, 2, 3))
+        elif activation_mode == "mean":
+            filter_activations = layer_output.mean(dim=(0, 2, 3))
+        elif activation_mode == "l2":
+            filter_activations = (layer_output.pow(2).sum(dim=(2, 3)).sqrt()).mean(dim=0)
+        elif activation_mode == "post_relu_mean":
+            filter_activations = torch.relu(layer_output).mean(dim=(0, 2, 3))
+        else:
+            raise ValueError(f"Unsupported activation_mode for ranking: {activation_mode}")
         
         # Get top K filter indices
         top_indices = torch.argsort(filter_activations, descending=True)[:top_k].cpu().numpy()
@@ -133,6 +140,7 @@ def main():
     TOP_K = 10
     ITERATIONS = 500
     LEARNING_RATE = 0.01
+    ACTIVATION_MODE = "mean_abs"  # keep in sync with optimization below
     
     # Estimate total time
     print(f"\n⏱️ TIME ESTIMATION:")
@@ -181,13 +189,18 @@ def main():
 
             # 2) Resolve training stats (T250/T500) via model_path
             norm_resolver = SimpleActivationMaximizer(model, device, model_path=str(model_path))
+            # Dataset-model alignment guard
+            ds_path = dataset_path.lower()
+            ds_tag = 'T250' if 't250' in ds_path else ('T500' if 't500' in ds_path else None)
+            if ds_tag is not None and ds_tag != norm_resolver.dataset_name:
+                raise ValueError(f"Dataset/model mismatch: dataset appears to be {ds_tag} but model normalization is {norm_resolver.dataset_name}.")
             wave_mean, wave_std = norm_resolver.wave_mean, norm_resolver.wave_std
 
             # 3) Normalize RAW sample with training stats for ranking
             normalized_sample = (raw_sample - wave_mean) / wave_std
             
             top_filters = get_top_active_filters(model, device, target_layer, 
-                                               normalized_sample, top_k=TOP_K)
+                                               normalized_sample, top_k=TOP_K, activation_mode=ACTIVATION_MODE)
             
             if not top_filters:
                 print(f"❌ No active filters found for layer {layer_idx}")
@@ -220,7 +233,8 @@ def main():
                             learning_rate=LEARNING_RATE,
                             use_real_data_init=False,  # IMPORTANT: Set to False when using init_tensor
                             init_tensor=init_tensor,  # Same RAW tensor for all filters!
-                            save_dir=layer_save_dir
+                            save_dir=layer_save_dir,
+                            activation_mode=ACTIVATION_MODE,
                         )
                         
                         final_activation = results['config']['final_activation']
