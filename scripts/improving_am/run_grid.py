@@ -34,6 +34,8 @@ from src.activation_maximization.simple_activation_max import SimpleActivationMa
 from src.activation_maximization.layer_hooks import find_best_cv_model
 from src.models.wave_source_resnet import create_wave_source_model
 from src.data.wave_dataset import WaveDataset
+from src.common.normalization import ensure_dataset_model_match, load_training_stats, infer_dataset_tag
+from src.common.paths import get_configs_dir, get_experiments_dir, get_data_dir
 
 
 def set_determinism(seed: int = 42) -> None:
@@ -220,9 +222,9 @@ def get_top_active_filter(model: torch.nn.Module,
 
 def main():
     parser = argparse.ArgumentParser(description="AM Grid Search Runner")
-    parser.add_argument("--config", type=str, default="configs/improving_am/baseline.yaml",
+    parser.add_argument("--config", type=str, default=str(get_configs_dir() / "improving_am/baseline.yaml"),
                         help="Path to grid config YAML")
-    parser.add_argument("--out_dir", type=str, default="experiments/improving_am",
+    parser.add_argument("--out_dir", type=str, default=str(get_experiments_dir() / "improving_am"),
                         help="Base output directory")
     parser.add_argument("--seed", type=int, default=42, help="Deterministic seed")
     parser.add_argument("--model_path", type=str, default="",
@@ -239,16 +241,12 @@ def main():
     model, ckpt_path = resolve_model(model_path_cli, device)
 
     # Load dataset once
-    dataset_path = cfg.get('dataset_path', 'data/wave_dataset_analysis_20samples.h5')
+    default_dataset_path = get_data_dir() / "wave_dataset_analysis_20samples.h5"
+    dataset_path = cfg.get('dataset_path', str(default_dataset_path))
     dataset = WaveDataset(dataset_path, normalize_wave_fields=False)
 
     # Enforce dataset-model T-tag alignment
-    stats_resolver_for_check = SimpleActivationMaximizer(model, device, model_path=str(ckpt_path))
-    model_tag = stats_resolver_for_check.dataset_name  # 'T250' or 'T500'
-    ds_tag = infer_dataset_from_path(dataset_path) or infer_dataset_from_path(str(Path(dataset_path).name))
-    if ds_tag is not None and ds_tag != model_tag:
-        raise ValueError(f"Dataset/model mismatch: dataset appears to be {ds_tag} but model normalization is {model_tag}.\n"
-                         f"dataset_path={dataset_path}, model_ckpt={ckpt_path}")
+    ensure_dataset_model_match(dataset_path, ckpt_path)
     
     # Select layers for analysis
     conv_layers = get_conv_layers(model)
@@ -340,8 +338,8 @@ def main():
         init_tensor = wave_field.to(device)
 
         # For each selected layer, compute top-K filters using training normalization
-        stats_resolver = SimpleActivationMaximizer(model, device, model_path=str(ckpt_path))
-        wave_mean, wave_std = stats_resolver.wave_mean, stats_resolver.wave_std
+        model_tag = infer_dataset_tag(ckpt_path)
+        wave_mean, wave_std = load_training_stats(model_tag)
 
         for (layer_internal_idx, layer_name, target_layer) in selected_layers:
             # For each activation mode, rank filters using the SAME activation used for optimization
@@ -378,7 +376,7 @@ def main():
                                 raise ValueError(f"Unsupported activation_mode for ranking: {act}")
                             top_filters = torch.argsort(scores, descending=True)[:top_k_filters].cpu().tolist()
                 except Exception as e:
-                    print(f"⚠️ Ranking failed for layer {layer_internal_idx} (act={act}): {e}")
+                    print(f"WARNING: Ranking failed for layer {layer_internal_idx} (act={act}): {e}")
                     top_filters = [0]
 
                 for filt in top_filters:

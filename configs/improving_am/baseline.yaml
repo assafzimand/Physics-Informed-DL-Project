@@ -12,9 +12,9 @@ sample_idx: 0          # fixed sample used as init_tensor (RAW)
 # Multi-layer/multi-filter selection
 selection:
   mode: last_n           # options: last_n | explicit
-  last_n_layers: 8       # when mode=last_n, take last N Conv2d layers
+  last_n_layers: 1      # when mode=last_n, take last N Conv2d layers
   layer_indices: []      # when mode=explicit, list of layer indices in conv_layers list
-  top_k_filters: 8       # per selected layer, take top-K active filters for the sample
+  top_k_filters: 1      # per selected layer, take top-K active filters for the sample
   # Focus specific filters per internal layer index (from results):
   # Example: layer 59 -> filters [56, 123, 127]; layer 61 -> [18, 167, 203, 243]
   filters_by_layer:
@@ -28,7 +28,7 @@ grid:
   tv_regs: [0.0]
   l2_regs: [0.0]
   activation_modes: [post_relu_mean]
-  sample_indices: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+  sample_indices: [0]
   suppression_weights: [1.0]
 
 # Convergence criteria (evaluated over last K iterations)

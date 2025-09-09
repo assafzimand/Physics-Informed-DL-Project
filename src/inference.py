@@ -17,6 +17,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from src.models.wave_source_resnet import create_wave_source_model
 from src.wave_simulation import Wave2DSimulator
+from src.common.normalization import infer_dataset_tag, load_training_stats
 
 
 class WaveSourceInference:
@@ -35,19 +36,18 @@ class WaveSourceInference:
         self.device = torch.device(device)
         self.model_path = model_path
         
-        # Training dataset normalization statistics (CRITICAL!)
-        # These MUST match the statistics used during training
-        self.wave_mean = 0.000460
-        self.wave_std = 0.020842
+        # Resolve training dataset normalization statistics dynamically
+        model_tag = infer_dataset_tag(self.model_path)
+        self.wave_mean, self.wave_std = load_training_stats(model_tag)
         
         # Load the trained model
         self.model = self._load_model()
         self.model.eval()  # Set to evaluation mode
         
-        print(f"✅ Loaded model from {model_path}")
-        print(f"🔧 Using device: {self.device}")
-        print(f"📊 Model parameters: {self.model.get_num_parameters():,}")
-        print(f"📊 Normalization: mean={self.wave_mean:.6f}, std={self.wave_std:.6f}")
+        print(f"Loaded model from {model_path}")
+        print(f"Using device: {self.device}")
+        print(f"Model parameters: {self.model.get_num_parameters():,}")
+        print(f"Normalization ({model_tag}): mean={self.wave_mean:.6f}, std={self.wave_std:.6f}")
     
     def _load_model(self) -> torch.nn.Module:
         """Load the trained model from disk."""

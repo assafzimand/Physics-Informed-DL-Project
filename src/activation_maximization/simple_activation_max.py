@@ -24,6 +24,8 @@ try:
 except Exception:
     pass
 
+from src.common.normalization import infer_dataset_tag, load_training_stats
+
 
 class SimpleActivationMaximizer:
     """
@@ -66,62 +68,16 @@ class SimpleActivationMaximizer:
         # Priority 1: explicit dataset_name
         if dataset_name is not None:
             return dataset_name.upper()
-        # Priority 2: try reading checkpoint config
+        # Priority 2: Delegate to central utility
         if model_path is not None:
-            try:
-                import torch as _torch
-                ckpt = _torch.load(model_path, map_location='cpu')
-                if isinstance(ckpt, dict):
-                    cfg = ckpt.get('config') or {}
-                    ds_name = (cfg.get('dataset_name') or '').upper()
-                    ds_path = (cfg.get('dataset_path') or '').upper()
-                    if ds_name in { 'T250', 'T500' }:
-                        return ds_name
-                    if 'T250' in ds_path:
-                        return 'T250'
-                    if 'T500' in ds_path:
-                        return 'T500'
-            except Exception:
-                pass
-            # Priority 3: heuristics from model_path string
-            path_lower = str(model_path).lower()
-            if 't250' in path_lower:
-                return 'T250'
-            if 't500' in path_lower:
-                return 'T500'
+            return infer_dataset_tag(model_path)
         # Fallback: default to T500 but warn
-        print("⚠️ Could not determine dataset from model; defaulting to T500 normalization")
+        print("WARNING: Could not determine dataset from model; defaulting to T500 normalization")
         return 'T500'
 
     def _load_training_normalization_stats(self, dataset_name: str) -> Tuple[float, float]:
-        """Load wave_mean/std from the corresponding TRAINING HDF5 file attributes.
-
-        Uses:
-          - data/wave_dataset_T250.h5 for T250
-          - data/wave_dataset_T500.h5 for T500
-        Falls back to historical constants if files are unavailable.
-        """
-        import h5py as _h5
-        from pathlib import Path as _Path
-        ds = dataset_name.upper()
-        if ds == 'T250':
-            h5_path = _Path('data/wave_dataset_T250.h5')
-        else:
-            h5_path = _Path('data/wave_dataset_T500.h5')
-        try:
-            if h5_path.exists():
-                with _h5.File(str(h5_path), 'r') as f:
-                    mean = float(f.attrs.get('wave_mean'))
-                    std = float(f.attrs.get('wave_std'))
-                    print(f"📊 Using training normalization ({ds}): mean={mean:.6f}, std={std:.6f}")
-                    return mean, std
-        except Exception:
-            pass
-        # Historical defaults (kept for safety)
-        default_mean = 0.000460
-        default_std = 0.020842
-        print(f"⚠️ Using fallback normalization ({ds}): mean={default_mean:.6f}, std={default_std:.6f}")
-        return default_mean, default_std
+        """Load wave_mean/std from the corresponding TRAINING HDF5 file attributes."""
+        return load_training_stats(dataset_name)
         
     def load_real_wave_samples(self, dataset_path="data/wave_dataset_analysis_20samples.h5"):
         """Load real wave samples for initialization"""
@@ -177,26 +133,26 @@ class SimpleActivationMaximizer:
         Returns:
             Dictionary with comprehensive results including patterns, monitoring data, plots
         """
-        print(f"\n🎯 COMPREHENSIVE ACTIVATION MAXIMIZATION")
+        print(f"\n- Comprehensive Activation Maximization -")
         print("=" * 70)
-        print(f"🔍 Target: {layer_name} filter {filter_idx}")
-        print(f"📊 Config: {iterations} iterations, LR={learning_rate}")
-        print(f"🌊 Real data init: {'✅' if use_real_data_init else '❌'}")
-        print(f"📈 Normalization: ALWAYS ON ({self.dataset_name})")
+        print(f"Target: {layer_name} filter {filter_idx}")
+        print(f"Config: {iterations} iterations, LR={learning_rate}")
+        print(f"Real data init: {'Yes' if use_real_data_init else 'No'}")
+        print(f"Normalization: ALWAYS ON ({self.dataset_name})")
         if tv_reg > 0:
-            print(f"🎨 Smoothness (TV Regularization): λ={tv_reg}")
+            print(f"Smoothness (TV Regularization): lambda={tv_reg}")
         if l2_reg > 0:
-            print(f"🧰 Amplitude (L2 on input): λ={l2_reg}")
-        print(f"🧮 Activation measure: {activation_mode}")
+            print(f"Amplitude (L2 on input): lambda={l2_reg}")
+        print(f"Activation measure: {activation_mode}")
         
         # Load real data if requested
         wave_samples = None
         if use_real_data_init and init_tensor is None:
             wave_samples, _ = self.load_real_wave_samples()
             if wave_samples is not None:
-                print(f"✅ Loaded {len(wave_samples)} real wave samples")
+                print(f"Loaded {len(wave_samples)} real wave samples")
             else:
-                print("❌ Failed to load real data, using random initialization")
+                print("Failed to load real data, using random initialization")
         
         # Initialize monitoring
         monitoring_data = {
@@ -220,17 +176,17 @@ class SimpleActivationMaximizer:
         # Initialize input tensor
         if init_tensor is not None:
             # Use provided initialization tensor
-            print(f"🎯 Using provided initialization tensor")
+            print(f"Using provided initialization tensor")
             input_tensor = init_tensor.clone().detach().to(self.device)
             input_tensor.requires_grad_(True)
             initial_pattern = input_tensor.clone().detach()
-            print(f"📊 Init stats: mean={input_tensor.mean():.6f}, std={input_tensor.std():.6f}")
+            print(f"Init stats: mean={input_tensor.mean():.6f}, std={input_tensor.std():.6f}")
         elif use_real_data_init and wave_samples is not None:
             # Use random real sample
             sample_idx = random.randint(0, len(wave_samples) - 1)
             initial_sample = wave_samples[sample_idx]
-            print(f"🌊 Using real sample {sample_idx} as initialization")
-            print(f"📊 Sample stats: mean={initial_sample.mean():.6f}, std={initial_sample.std():.6f}")
+            print(f"Using real sample {sample_idx} as initialization")
+            print(f"Sample stats: mean={initial_sample.mean():.6f}, std={initial_sample.std():.6f}")
             
             input_tensor = torch.from_numpy(initial_sample).float()
             input_tensor = input_tensor.unsqueeze(0).unsqueeze(0).to(self.device)
@@ -238,7 +194,7 @@ class SimpleActivationMaximizer:
             initial_pattern = input_tensor.clone().detach()
         else:
             # Random initialization
-            print("🎲 Using random initialization")
+            print("Using random initialization")
             input_tensor = torch.randn(1, 1, image_size, image_size, 
                                      requires_grad=True, device=self.device)
             initial_pattern = input_tensor.clone().detach()
@@ -255,7 +211,7 @@ class SimpleActivationMaximizer:
         best_loss = float('inf')
         best_input = None
         
-        print(f"\n🚀 Starting optimization...")
+        print(f"\nStarting optimization...")
         
         # Main optimization loop
         for i in range(iterations):
@@ -266,7 +222,7 @@ class SimpleActivationMaximizer:
             print_norm_status = "NORMALIZED" if i == 0 else ""
                 
             if print_norm_status:
-                print(f"📊 Input type: {print_norm_status}")
+                print(f"Input type: {print_norm_status}")
             
             # Forward pass
             _ = self.model(model_input)
@@ -353,12 +309,12 @@ class SimpleActivationMaximizer:
                 print(f"   Step {i:4d}: Loss={total_loss.item():.4f}, "
                       f"Target={-target_loss.item():.2f}, "
                       f"Suppress={suppression_loss.item():.2f}, "
-                      f"TV={tv_loss.item():.4f} (λ={tv_reg}), "
-                      f"L2={l2_loss.item():.4f} (λ={l2_reg}), "
+                      f"TV={tv_loss.item():.4f} (lambda={tv_reg}), "
+                      f"L2={l2_loss.item():.4f} (lambda={l2_reg}), "
                       f"GradMag={grad_mag:.6f}, "
                       f"InputStd={input_tensor.std().item():.4f}")
         
-        print(f"\n✅ Optimization complete!")
+        print(f"\nOptimization complete!")
         final_activation = monitoring_data['activation'][-1]
         final_target_loss = monitoring_data['target_loss'][-1]
         final_suppression_loss = monitoring_data['suppression_loss'][-1]
@@ -368,7 +324,7 @@ class SimpleActivationMaximizer:
         avg_grad_mag = np.mean(monitoring_data['grad_magnitude'])
         grad_variation = np.std(monitoring_data['grad_magnitude'])
         
-        print(f"📊 Final Results:")
+        print(f"Final Results:")
         print(f"   Final Activation: {final_activation:.2f}")
         print(f"   Final Target Loss: {final_target_loss:.4f}")
         print(f"   Final Suppression Loss: {final_suppression_loss:.4f}")
@@ -380,9 +336,9 @@ class SimpleActivationMaximizer:
         print(f"   Average Gradient Magnitude: {avg_grad_mag:.6f}")
         print(f"   Gradient Variation (std): {grad_variation:.6f}")
         if grad_variation > 1e-6:
-            print(f"   ✅ GRADIENTS ARE VARYING! (std > 1e-6)")
+            print(f"   Gradients are varying (std > 1e-6)")
         else:
-            print(f"   ❌ Gradients are constant (std ≤ 1e-6)")
+            print(f"   Gradients are constant (std <= 1e-6)")
         
         # Create comprehensive results dictionary
         results = {
@@ -486,9 +442,9 @@ class SimpleActivationMaximizer:
         ax3.plot(iterations, target_losses, 'r-', label='Target Loss', linewidth=2)
         ax3.plot(iterations, suppression_losses, 'orange', label='Suppression Loss', linewidth=2)
         if config['tv_reg'] > 0 and any(tv > 0 for tv in tv_losses):
-            ax3.plot(iterations, [v * config['tv_reg'] for v in tv_losses], 'k--', label=f'TV (λ={config["tv_reg"]})', linewidth=1.5)
+            ax3.plot(iterations, [v * config['tv_reg'] for v in tv_losses], 'k--', label=f'TV (lambda={config["tv_reg"]})', linewidth=1.5)
         if config.get('l2_reg', 0.0) > 0 and any(v > 0 for v in l2_losses):
-            ax3.plot(iterations, [v * config['l2_reg'] for v in l2_losses], 'c-.', label=f'L2 (λ={config["l2_reg"]})', linewidth=1.5)
+            ax3.plot(iterations, [v * config['l2_reg'] for v in l2_losses], 'c-.', label=f'L2 (lambda={config["l2_reg"]})', linewidth=1.5)
         ax3.set_xlabel('Iteration')
         ax3.set_ylabel('Loss Components')
         ax3.legend(fontsize=8)
@@ -538,9 +494,9 @@ class SimpleActivationMaximizer:
         summary_stats.update({
             'Loss Reduction': f"{config['loss_reduction']:.4f}",
             'Gradient Variation': f"{config['grad_variation']:.6f}",
-            'Real Data Init': '✅' if config['use_real_data_init'] else '❌',
+            'Real Data Init': 'Yes' if config['use_real_data_init'] else 'No',
             'Dataset': self.dataset_name,
-            'Gradients Varying': '✅' if config['grad_variation'] > 1e-6 else '❌'
+            'Gradients Varying': 'Yes' if config['grad_variation'] > 1e-6 else 'No'
         })
         
         stats_text = '\n'.join([f"{k}: {v}" for k, v in summary_stats.items()])
@@ -553,9 +509,9 @@ class SimpleActivationMaximizer:
         init_status = "REAL DATA" if config['use_real_data_init'] else "RANDOM"
         regs = []
         if config['tv_reg'] > 0:
-            regs.append(f"TV λ={config['tv_reg']}")
+            regs.append(f"TV lambda={config['tv_reg']}")
         if config.get('l2_reg', 0.0) > 0:
-            regs.append(f"L2 λ={config['l2_reg']}")
+            regs.append(f"L2 lambda={config['l2_reg']}")
         reg_status = " | ".join(regs) if regs else "NO REG"
         
         fig.suptitle(f'Comprehensive Activation Maximization\n'
@@ -575,7 +531,7 @@ class SimpleActivationMaximizer:
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
         plt.close()
         
-        print(f"💾 Comprehensive plot saved: {save_path}")
+        print(f"Comprehensive plot saved: {save_path}")
         return save_path
     
     def total_variation_loss(self, tensor):
