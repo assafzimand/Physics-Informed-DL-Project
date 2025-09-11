@@ -63,7 +63,7 @@ def validate_parameters():
     cfl_limit_2d = 1.0 / (2**0.5)  # ~0.707 for 2D
     
     if cfl_actual > cfl_limit_2d:
-        print(f"❌ CFL condition violated!")
+        print("❌ CFL condition violated!")
         print(f"   Actual CFL: {cfl_actual:.3f}")
         print(f"   2D limit: {cfl_limit_2d:.3f}")
         return False
@@ -79,7 +79,7 @@ def validate_parameters():
         return False
     
     # All checks passed
-    print(f"✅ Configuration validation passed:")
+    print("✅ Configuration validation passed:")
     print(f"   Grid: {GRID_SIZE}×{GRID_SIZE}")
     print(f"   Wave speed: {WAVE_SPEED}")
     print(f"   CFL: {cfl_actual:.3f} (limit: {cfl_limit_2d:.3f})")

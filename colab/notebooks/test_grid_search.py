@@ -156,7 +156,7 @@ def print_test_summary(results: List[Dict[str, Any]]):
         print("✅ Ready to run full grid search:")
         print("   !python colab/notebooks/run_optimization.py")
     else:
-        print(f"\n⚠️ Fix issues above before running full grid search")
+        print("\n⚠️ Fix issues above before running full grid search")
 
 
 def main():

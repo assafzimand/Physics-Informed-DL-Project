@@ -21,8 +21,21 @@ build/
 .idea/
 
 # Data files (don't commit large datasets)
+# Default ignore, with explicit allowlist below for demo datasets
+#
+# Ignore patterns
+#
+# NOTE: keep these broad ignores, but allowlist the two demo validation files
+# by adding negation rules after the ignores.
+
+# Ignore general data files
 data/*.h5
 data/*.hdf5
+
+# Allowlist specific demo/validation datasets
+!data/wave_dataset_T250_validation.h5
+!data/wave_dataset_T500_validation.h5
+
 *.pkl
 *.pickle
 

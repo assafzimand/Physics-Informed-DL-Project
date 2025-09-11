@@ -4,14 +4,12 @@ Grid Search Phase 1 - Comprehensive Analysis
 Analyzes MLflow results from 8-experiment grid search and generates visualization plots.
 """
 
-import os
-import json
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -406,7 +404,7 @@ class GridSearchAnalyzer:
                 opt_groups[opt] = []
             opt_groups[opt].append(exp['final_distance_error'])
         
-        report += f"""
+        report += """
 
 ## 📊 **HYPERPARAMETER INSIGHTS**
 

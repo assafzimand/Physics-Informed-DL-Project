@@ -180,7 +180,7 @@ def print_final_summary(results: List[Dict[str, Any]]):
     avg_loss = sum(r['val_loss'] for r in valid_results) / len(valid_results)
     total_time = sum(r['duration_minutes'] for r in results)
     
-    print(f"\n📊 GRID STATISTICS:")
+    print("\n📊 GRID STATISTICS:")
     print(f"   Average Distance Error: {avg_dist:.2f} px")
     print(f"   Average Validation Loss: {avg_loss:.4f}")
     print(f"   Total Time: {total_time/60:.1f} hours")

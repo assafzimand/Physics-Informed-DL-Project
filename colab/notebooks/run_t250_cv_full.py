@@ -166,7 +166,7 @@ def analyze_full_cv_results(cv_results, total_time):
     print("=" * 60)
     
     print(f"⏱️ Total Time: {total_time:.1f} minutes ({total_time/60:.1f} hours)")
-    print(f"📊 Full Training Results (75 epochs per fold):")
+    print("📊 Full Training Results (75 epochs per fold):")
     
     # Extract key metrics (using correct CV trainer keys)
     mean_distance_error = cv_results['distance_error_mean']
@@ -182,13 +182,13 @@ def analyze_full_cv_results(cv_results, total_time):
     print(f"   Mean Val Loss: {mean_val_loss:.4f} ± {std_val_loss:.4f}")
     
     # Fold-by-fold results
-    print(f"\n📋 Individual Fold Results:")
+    print("\n📋 Individual Fold Results:")
     fold_results = cv_results['fold_results']
     for i, fold in enumerate(fold_results):
         print(f"   Fold {i+1}: {fold['distance_error']:.3f} px, {fold['val_loss']:.4f} loss, {fold['training_time']:.1f} min")
     
     # Academic-quality performance assessment
-    print(f"\n📈 Academic Performance Assessment:")
+    print("\n📈 Academic Performance Assessment:")
     if mean_distance_error <= 2.0:
         performance_grade = "EXCELLENT"
         print(f"   ✅ {performance_grade}: {mean_distance_error:.3f} ± {std_distance_error:.3f} px (≤ 2.0 px)")
@@ -203,10 +203,10 @@ def analyze_full_cv_results(cv_results, total_time):
         print(f"   ⚠️ {performance_grade}: {mean_distance_error:.3f} ± {std_distance_error:.3f} px (> 3.0 px)")
     
     # Comparison with baselines
-    print(f"\n🔄 Comparison with Baselines:")
-    print(f"   T=500 Grid Search Best: 2.37 px")
-    print(f"   T=500 CV Average: 2.078 ± 0.309 px")
-    print(f"   T=250 Validation: 2.237 px")
+    print("\n🔄 Comparison with Baselines:")
+    print("   T=500 Grid Search Best: 2.37 px")
+    print("   T=500 CV Average: 2.078 ± 0.309 px")
+    print("   T=250 Validation: 2.237 px")
     print(f"   T=250 CV Full: {mean_distance_error:.3f} ± {std_distance_error:.3f} px")
     
     # Statistical significance assessment
@@ -217,12 +217,12 @@ def analyze_full_cv_results(cv_results, total_time):
     else:
         significance = "✅ ACCEPTABLE VARIANCE: Reasonably consistent results"
     
-    print(f"\n📊 Statistical Assessment:")
+    print("\n📊 Statistical Assessment:")
     print(f"   {significance}")
     print(f"   Coefficient of Variation: {(std_distance_error/mean_distance_error)*100:.1f}%")
     
     # Academic reporting format
-    print(f"\n📝 Academic Reporting Format:")
+    print("\n📝 Academic Reporting Format:")
     print(f"   Distance Error: {mean_distance_error:.2f} ± {std_distance_error:.2f} px")
     print(f"   Validation Loss: {mean_val_loss:.4f} ± {std_val_loss:.4f}")
     print(f"   Performance Grade: {performance_grade}")
@@ -404,38 +404,38 @@ def save_full_cv_results(config, results, fig=None):
     # Create comprehensive report
     report_file = results_dir / f"CV_FULL_REPORT_{timestamp}.md"
     with open(report_file, 'w') as f:
-        f.write(f"# T=250 5-Fold Cross-Validation Full Training Report\n\n")
+        f.write("# T=250 5-Fold Cross-Validation Full Training Report\n\n")
         f.write(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-        f.write(f"## 🎯 Experiment Overview\n")
-        f.write(f"Complete 5-fold cross-validation training on T=250 dataset for academic-quality results.\n\n")
-        f.write(f"### Training Configuration\n")
-        f.write(f"- **Dataset**: wave_dataset_T250.h5\n")
+        f.write("## 🎯 Experiment Overview\n")
+        f.write("Complete 5-fold cross-validation training on T=250 dataset for academic-quality results.\n\n")
+        f.write("### Training Configuration\n")
+        f.write("- **Dataset**: wave_dataset_T250.h5\n")
         f.write(f"- **Epochs per Fold**: {config.num_epochs}\n")
         f.write(f"- **Total Epochs**: {config.num_epochs * 5}\n")
         f.write(f"- **Hyperparameters**: lr={config.learning_rate}, bs={config.batch_size}, opt={config.optimizer}\n")
         f.write(f"- **Training Time**: {results['total_time']:.1f} minutes ({results['total_time']/60:.1f} hours)\n\n")
-        f.write(f"## 📊 Results Summary\n")
+        f.write("## 📊 Results Summary\n")
         f.write(f"- **Distance Error**: {results['distance_error_mean']:.3f} ± {results['distance_error_std']:.3f} px\n")
         f.write(f"- **Validation Loss**: {results['val_loss_mean']:.4f} ± {results['val_loss_std']:.4f}\n")
         f.write(f"- **Best Fold**: {results['distance_error_min']:.3f} px\n")
         f.write(f"- **Worst Fold**: {results['distance_error_max']:.3f} px\n")
         f.write(f"- **Performance Grade**: {results['performance_grade']}\n\n")
-        f.write(f"## 📋 Individual Fold Results\n")
+        f.write("## 📋 Individual Fold Results\n")
         fold_results = results['cv_results']['fold_results']
         for i, fold in enumerate(fold_results):
             f.write(f"- **Fold {i+1}**: {fold['distance_error']:.3f} px, {fold['val_loss']:.4f} loss\n")
-        f.write(f"\n## 🔄 Baseline Comparisons\n")
-        f.write(f"- **T=500 Grid Search Best**: 2.37 px\n")
-        f.write(f"- **T=500 CV Average**: 2.078 ± 0.309 px\n")
-        f.write(f"- **T=250 Validation**: 2.237 px\n")
+        f.write("\n## 🔄 Baseline Comparisons\n")
+        f.write("- **T=500 Grid Search Best**: 2.37 px\n")
+        f.write("- **T=500 CV Average**: 2.078 ± 0.309 px\n")
+        f.write("- **T=250 Validation**: 2.237 px\n")
         f.write(f"- **T=250 CV Full**: {results['distance_error_mean']:.3f} ± {results['distance_error_std']:.3f} px\n\n")
-        f.write(f"## 📝 Academic Citation Format\n")
+        f.write("## 📝 Academic Citation Format\n")
         f.write(f"\"The T=250 dataset achieved a cross-validated distance error of {results['distance_error_mean']:.2f} ± {results['distance_error_std']:.2f} pixels using 5-fold cross-validation with {config.num_epochs} epochs per fold.\"\n\n")
-        f.write(f"## 📁 Generated Files\n")
+        f.write("## 📁 Generated Files\n")
         f.write(f"- `cv_full_summary_{timestamp}.json`: Complete experimental data\n")
         f.write(f"- `cv_full_analysis_{timestamp}.png`: Comprehensive analysis plots\n")
         f.write(f"- `CV_FULL_REPORT_{timestamp}.md`: This detailed report\n\n")
-        f.write(f"## 🎯 Conclusions\n")
+        f.write("## 🎯 Conclusions\n")
         f.write(f"The T=250 dataset demonstrates {results['performance_grade'].lower()} performance with consistent results across all folds, making it suitable for physics-informed deep learning applications in wave source localization.\n")
     
     print(f"✅ Report saved: {report_file}")
@@ -530,9 +530,9 @@ def save_full_cv_results(config, results, fig=None):
         json.dump(ensemble_info, f, indent=2)
     print(f"✅ Saved ensemble info: {ensemble_file}")
     
-    print(f"\n🎉 ALL FULL CV RESULTS SAVED TO DRIVE!")
+    print("\n🎉 ALL FULL CV RESULTS SAVED TO DRIVE!")
     print(f"📁 Location: {results_dir}")
-    print(f"🔄 Results synced to Google Drive!")
+    print("🔄 Results synced to Google Drive!")
 
 
 def main():
@@ -548,11 +548,11 @@ def main():
     config = create_full_cv_config(dataset_path)
     
     # Confirm before starting
-    print(f"\n⚠️ CONFIRMATION REQUIRED:")
-    print(f"   This will run 5-fold CV training for ~10 hours")
-    print(f"   Keep your Colab session active during training")
-    print(f"   Results will be auto-saved to Drive")
-    print(f"\n🚀 Starting full CV training in 5 seconds...")
+    print("\n⚠️ CONFIRMATION REQUIRED:")
+    print("   This will run 5-fold CV training for ~10 hours")
+    print("   Keep your Colab session active during training")
+    print("   Results will be auto-saved to Drive")
+    print("\n🚀 Starting full CV training in 5 seconds...")
     time.sleep(5)
     
     # Run full CV training

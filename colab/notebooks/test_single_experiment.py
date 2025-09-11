@@ -198,20 +198,20 @@ def print_final_summary(metrics, duration_minutes):
     
     # Estimate full grid search time
     estimated_full_time = duration_minutes * 8 / 10 * 5  # 8 experiments, 50 epochs vs 10
-    print(f"\n⏱️ Full Grid Search Estimate:")
+    print("\n⏱️ Full Grid Search Estimate:")
     print(f"   8 experiments × 50 epochs ≈ {estimated_full_time/60:.1f} hours")
     
     # Check if reasonable results
     if final_distance_error < 50:  # Reasonable for 10 epochs
-        print(f"\n✅ PIPELINE TEST PASSED!")
-        print(f"🚀 Ready for full grid search:")
-        print(f"   !python colab/notebooks/run_optimization.py")
+        print("\n✅ PIPELINE TEST PASSED!")
+        print("🚀 Ready for full grid search:")
+        print("   !python colab/notebooks/run_optimization.py")
     else:
-        print(f"\n⚠️ Results seem high - check configuration")
-        print(f"   Distance error > 50px suggests potential issues")
+        print("\n⚠️ Results seem high - check configuration")
+        print("   Distance error > 50px suggests potential issues")
     
-    print(f"\n💾 Results saved to Google Drive")
-    print(f"📱 Download with: python colab/mlflow/download_results.py")
+    print("\n💾 Results saved to Google Drive")
+    print("📱 Download with: python colab/mlflow/download_results.py")
 
 
 def main():
@@ -256,7 +256,7 @@ def main():
         duration_minutes = (time.time() - start_time) / 60
         print(f"\n❌ Test failed after {duration_minutes:.1f} minutes:")
         print(f"   Error: {str(e)}")
-        print(f"\n🔧 Check the error and configuration before full grid search")
+        print("\n🔧 Check the error and configuration before full grid search")
 
 
 if __name__ == "__main__":

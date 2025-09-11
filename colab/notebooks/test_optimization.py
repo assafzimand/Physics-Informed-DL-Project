@@ -54,7 +54,7 @@ def setup_test_environment():
     os.makedirs(f"{results_base}/test_models", exist_ok=True)
     os.makedirs(f"{results_base}/test_mlruns", exist_ok=True)
     
-    print(f"✅ Environment ready for testing")
+    print("✅ Environment ready for testing")
     return True
 
 
@@ -78,7 +78,7 @@ def create_test_config():
         experiment_name="test_optimization"
     )
     
-    print(f"🔧 Test Config Created:")
+    print("🔧 Test Config Created:")
     print(f"   Epochs: {config.num_epochs} (quick test)")
     print(f"   Batch size: {config.batch_size}")
     print(f"   Learning rate: {config.learning_rate}")
@@ -89,8 +89,8 @@ def create_test_config():
 
 def run_test_experiment():
     """Run the test experiment."""
-    print(f"\n🚀 Starting Test Experiment...")
-    print(f"⏱️  Expected time: ~5 minutes")
+    print("\n🚀 Starting Test Experiment...")
+    print("⏱️  Expected time: ~5 minutes")
     print("=" * 40)
     
     start_time = time.time()
@@ -100,7 +100,7 @@ def run_test_experiment():
         config = create_test_config()
         trainer = WaveTrainer(config)
         
-        print(f"\n📊 Dataset loaded - starting training...")
+        print("\n📊 Dataset loaded - starting training...")
         
         # Train model (5 epochs)
         best_metrics = trainer.train()
@@ -110,7 +110,7 @@ def run_test_experiment():
         val_distance_error = best_metrics['val_distance_error'][-1] if best_metrics['val_distance_error'] else float('inf')
         training_time = time.time() - start_time
         
-        print(f"\n✅ Test Training Completed!")
+        print("\n✅ Test Training Completed!")
         print(f"📊 Final Validation Loss: {val_loss:.3f}")
         print(f"📏 Final Distance Error: {val_distance_error:.2f} px")
         print(f"⏱️  Training Time: {training_time:.1f} seconds")
@@ -130,7 +130,7 @@ def run_test_experiment():
 
 def test_mlflow_tracking():
     """Test MLflow tracking."""
-    print(f"\n🔍 Testing MLflow...")
+    print("\n🔍 Testing MLflow...")
     
     try:
         # Check if MLflow data exists
@@ -141,7 +141,7 @@ def test_mlflow_tracking():
                 print(f"✅ MLflow tracking working - found {len(experiments)} experiments")
                 return True
         
-        print(f"⚠️  No MLflow data found")
+        print("⚠️  No MLflow data found")
         return False
         
     except Exception as e:
@@ -151,7 +151,7 @@ def test_mlflow_tracking():
 
 def test_drive_sync():
     """Test Drive synchronization."""
-    print(f"\n🔍 Testing Drive sync...")
+    print("\n🔍 Testing Drive sync...")
     
     try:
         import shutil
@@ -164,10 +164,10 @@ def test_drive_sync():
             if os.path.exists(drive_mlruns):
                 shutil.rmtree(drive_mlruns)
             shutil.copytree(local_mlruns, drive_mlruns)
-            print(f"✅ Drive sync working - MLflow data copied")
+            print("✅ Drive sync working - MLflow data copied")
             return True
         
-        print(f"⚠️  No data to sync")
+        print("⚠️  No data to sync")
         return False
         
     except Exception as e:
@@ -177,9 +177,9 @@ def test_drive_sync():
 
 def print_test_summary(success, results, mlflow_ok, drive_ok):
     """Print test summary."""
-    print(f"\n" + "="*60)
-    print(f"🧪 TEST RESULTS SUMMARY")
-    print(f"="*60)
+    print("\n" + "="*60)
+    print("🧪 TEST RESULTS SUMMARY")
+    print("="*60)
     
     # Training test
     status = "✅ PASS" if success else "❌ FAIL"
@@ -201,19 +201,19 @@ def print_test_summary(success, results, mlflow_ok, drive_ok):
     print(f"\n🎯 Overall Status: {'✅ READY FOR FULL OPTIMIZATION' if all_good else '❌ NEEDS FIXING'}")
     
     if all_good:
-        print(f"\n🚀 Next Steps:")
-        print(f"   1. Run: !python colab/notebooks/run_optimization.py")
-        print(f"   2. Wait 6-8 hours for 8 experiments")
-        print(f"   3. Get best model automatically!")
+        print("\n🚀 Next Steps:")
+        print("   1. Run: !python colab/notebooks/run_optimization.py")
+        print("   2. Wait 6-8 hours for 8 experiments")
+        print("   3. Get best model automatically!")
     else:
-        print(f"\n🔧 Fix issues above before running full optimization")
+        print("\n🔧 Fix issues above before running full optimization")
 
 
 def main():
     """Main test function."""
-    print(f"🧪 ResNet Optimization - Quick Test")
+    print("🧪 ResNet Optimization - Quick Test")
     print(f"🕐 Start: {datetime.now().strftime('%H:%M:%S')}")
-    print(f"⏱️  Expected duration: ~5 minutes")
+    print("⏱️  Expected duration: ~5 minutes")
     
     # Setup
     if not setup_test_environment():

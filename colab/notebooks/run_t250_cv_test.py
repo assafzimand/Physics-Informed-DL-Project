@@ -8,7 +8,6 @@ import os
 import sys
 import time
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -163,7 +162,7 @@ def analyze_cv_results(cv_results, total_time):
     print("=" * 60)
     
     print(f"⏱️ Total Time: {total_time:.1f} minutes")
-    print(f"📊 Test Results (2 epochs per fold):")
+    print("📊 Test Results (2 epochs per fold):")
     
     # Extract key metrics (using correct CV trainer keys)
     mean_distance_error = cv_results['distance_error_mean']
@@ -175,23 +174,23 @@ def analyze_cv_results(cv_results, total_time):
     print(f"   Mean Val Loss: {mean_val_loss:.4f} ± {std_val_loss:.4f}")
     
     # Fold-by-fold results
-    print(f"\n📋 Individual Fold Results:")
+    print("\n📋 Individual Fold Results:")
     fold_results = cv_results['fold_results']
     for i, fold in enumerate(fold_results):
         print(f"   Fold {i+1}: {fold['distance_error']:.3f} px, {fold['val_loss']:.4f} loss")
     
     # Assessment for 2-epoch test
-    print(f"\n📈 Test Assessment:")
-    print(f"   ✅ Pipeline works: All 5 folds completed successfully")
+    print("\n📈 Test Assessment:")
+    print("   ✅ Pipeline works: All 5 folds completed successfully")
     print(f"   ⏱️ Time per fold: {total_time/5:.1f} minutes")
     print(f"   📊 Results spread: {std_distance_error:.3f} px std deviation")
     
     # Projection to full training
     estimated_full_time = (total_time / 2) * 75  # Scale from 2 to 75 epochs
-    print(f"\n🔮 Full Training Projection (75 epochs per fold):")
+    print("\n🔮 Full Training Projection (75 epochs per fold):")
     print(f"   ⏱️ Estimated time: ~{estimated_full_time:.0f} minutes ({estimated_full_time/60:.1f} hours)")
     print(f"   📈 Expected improvement: Much better than {mean_distance_error:.3f} px")
-    print(f"   🎯 Target: Similar to validation result (~2.2 px)")
+    print("   🎯 Target: Similar to validation result (~2.2 px)")
     
     # Recommendation
     if mean_distance_error < 10.0:  # Reasonable for 2-epoch test
@@ -199,7 +198,7 @@ def analyze_cv_results(cv_results, total_time):
     else:
         recommendation = "⚠️ INVESTIGATE: Results seem unusual for 2-epoch test"
     
-    print(f"\n🎯 RECOMMENDATION:")
+    print("\n🎯 RECOMMENDATION:")
     print(f"   {recommendation}")
     
     return {
@@ -256,34 +255,34 @@ def save_test_results(config, results):
     # Create test report
     report_file = test_dir / f"CV_TEST_REPORT_{timestamp}.md"
     with open(report_file, 'w') as f:
-        f.write(f"# T=250 5-Fold CV Test Report\n\n")
+        f.write("# T=250 5-Fold CV Test Report\n\n")
         f.write(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-        f.write(f"## 🧪 Test Objective\n")
-        f.write(f"Quick 5-fold CV test with 2 epochs per fold to verify pipeline before full training.\n\n")
-        f.write(f"## 📊 Test Results\n")
+        f.write("## 🧪 Test Objective\n")
+        f.write("Quick 5-fold CV test with 2 epochs per fold to verify pipeline before full training.\n\n")
+        f.write("## 📊 Test Results\n")
         f.write(f"- **Mean Distance Error**: {results['mean_distance_error']:.3f} ± {results['std_distance_error']:.3f} px\n")
         f.write(f"- **Total Test Time**: {results['total_time']:.1f} minutes\n")
         f.write(f"- **Time per Fold**: {results['total_time']/5:.1f} minutes\n\n")
-        f.write(f"## 🔮 Full Training Projection\n")
+        f.write("## 🔮 Full Training Projection\n")
         f.write(f"- **Estimated Full Time**: {results['estimated_full_time']/60:.1f} hours\n")
-        f.write(f"- **Expected Performance**: ~2.2 px (similar to validation)\n\n")
-        f.write(f"## 🎯 Recommendation\n")
+        f.write("- **Expected Performance**: ~2.2 px (similar to validation)\n\n")
+        f.write("## 🎯 Recommendation\n")
         f.write(f"{results['recommendation']}\n\n")
-        f.write(f"## 🚀 Next Steps\n")
-        f.write(f"If test passed, run full 75-epoch CV training:\n")
-        f.write(f"- Create `run_t250_cv_full.py` script\n")
-        f.write(f"- Set `num_epochs=75`\n")
+        f.write("## 🚀 Next Steps\n")
+        f.write("If test passed, run full 75-epoch CV training:\n")
+        f.write("- Create `run_t250_cv_full.py` script\n")
+        f.write("- Set `num_epochs=75`\n")
         f.write(f"- Expected time: ~{results['estimated_full_time']/60:.1f} hours\n")
-        f.write(f"- Expected results: Competitive with T=500 baseline\n\n")
-        f.write(f"## 📁 Test Files\n")
+        f.write("- Expected results: Competitive with T=500 baseline\n\n")
+        f.write("## 📁 Test Files\n")
         f.write(f"- `cv_test_summary_{timestamp}.json`: Complete test data\n")
         f.write(f"- `CV_TEST_REPORT_{timestamp}.md`: This report\n")
     
     print(f"✅ Report saved: {report_file}")
     
-    print(f"\n🎉 TEST RESULTS SAVED TO DRIVE!")
+    print("\n🎉 TEST RESULTS SAVED TO DRIVE!")
     print(f"📁 Location: {test_dir}")
-    print(f"🔄 Results synced to Google Drive!")
+    print("🔄 Results synced to Google Drive!")
 
 
 def main():

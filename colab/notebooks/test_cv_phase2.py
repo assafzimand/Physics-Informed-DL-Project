@@ -8,7 +8,6 @@ import os
 import sys
 import time
 import yaml
-from pathlib import Path
 
 # Add project root to path
 sys.path.append('/content/Physics-Informed-DL-Project')
@@ -59,7 +58,7 @@ def load_config():
     k_folds = final_config.pop('k_folds', 5)
     final_config.pop('expected_time_minutes', None)  # Remove but don't store
     
-    print(f"🔧 Test Config Created:")
+    print("🔧 Test Config Created:")
     print(f"   Epochs: {final_config['num_epochs']} per fold (total: {final_config['num_epochs'] * k_folds})")
     print(f"   K-Folds: {k_folds}")
     print(f"   Batch size: {final_config['batch_size']}")
@@ -161,7 +160,7 @@ def print_test_summary(cv_success, mlflow_ok, drive_ok, cv_results):
     print(f"💾 Drive Sync: {'✅ PASS' if drive_ok else '❌ FAIL'}")
     
     if cv_results:
-        print(f"\n📈 CV PERFORMANCE RESULTS:")
+        print("\n📈 CV PERFORMANCE RESULTS:")
         print(f"   Distance Error: {cv_results['distance_error_mean']:.2f} ± {cv_results['distance_error_std']:.2f} px")
         print(f"   Validation Loss: {cv_results['val_loss_mean']:.4f} ± {cv_results['val_loss_std']:.4f}")
         print(f"   Training Time: {cv_results['training_time_total']:.1f} minutes")

@@ -9,7 +9,6 @@ import sys
 import time
 import yaml
 import shutil
-from pathlib import Path
 
 # Add project root to path
 sys.path.append('/content/Physics-Informed-DL-Project')
@@ -79,7 +78,7 @@ def load_full_config():
     k_folds = final_config.pop('k_folds', 5)
     final_config.pop('expected_time_minutes', None)  # Remove but don't store
     
-    print(f"🔧 Full Training Config:")
+    print("🔧 Full Training Config:")
     print(f"   Epochs: {final_config['num_epochs']} per fold")
     print(f"   Total epochs: {final_config['num_epochs'] * k_folds}")
     print(f"   K-Folds: {k_folds}")
@@ -180,7 +179,7 @@ def run_full_cv_training():
         print_academic_results(cv_results)
         
         total_time = time.time() - start_time
-        print(f"\n🎉 5-Fold CV Training Complete!")
+        print("\n🎉 5-Fold CV Training Complete!")
         print(f"⏱️ Total training time: {total_time/3600:.1f} hours")
         print(f"💾 Results saved to Drive: {drive_base_path}")
         
@@ -233,22 +232,22 @@ def print_academic_results(cv_results):
     mean_loss = cv_results['val_loss_mean']
     std_loss = cv_results['val_loss_std']
     
-    print(f"\n🎯 WAVE SOURCE LOCALIZATION PERFORMANCE:")
+    print("\n🎯 WAVE SOURCE LOCALIZATION PERFORMANCE:")
     print(f"   Distance Error: {mean_error:.2f} ± {std_error:.2f} pixels")
     print(f"   Validation Loss: {mean_loss:.4f} ± {std_loss:.4f}")
-    print(f"   Number of Folds: 5")
-    print(f"   Total Samples: 2000 (400 per fold validation)")
+    print("   Number of Folds: 5")
+    print("   Total Samples: 2000 (400 per fold validation)")
     
-    print(f"\n📈 STATISTICAL ANALYSIS:")
+    print("\n📈 STATISTICAL ANALYSIS:")
     print(f"   Best Fold: {cv_results['distance_error_min']:.2f} px")
     print(f"   Worst Fold: {cv_results['distance_error_max']:.2f} px")
     print(f"   Coefficient of Variation: {(std_error/mean_error)*100:.1f}%")
     
-    print(f"\n🏆 HYPERPARAMETERS (GRID SEARCH WINNER):")
-    print(f"   Learning Rate: 0.001")
-    print(f"   Batch Size: 32")
-    print(f"   Optimizer: Adam")
-    print(f"   Epochs: 75 (with early stopping)")
+    print("\n🏆 HYPERPARAMETERS (GRID SEARCH WINNER):")
+    print("   Learning Rate: 0.001")
+    print("   Batch Size: 32")
+    print("   Optimizer: Adam")
+    print("   Epochs: 75 (with early stopping)")
     
     print("\n" + "="*80)
 

@@ -5,8 +5,8 @@ Centralized configuration for training experiments with hyperparameter options.
 """
 
 import os
-from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
+from dataclasses import dataclass
+from typing import Dict, Any, Optional
 
 
 @dataclass

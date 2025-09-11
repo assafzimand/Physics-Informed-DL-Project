@@ -15,12 +15,9 @@ Features:
     - Organizes results by date/session
 """
 
-import os
 import shutil
-import sys
 from pathlib import Path
 from datetime import datetime
-import zipfile
 
 
 def find_google_drive_path():
@@ -102,7 +99,7 @@ def download_mlflow_data():
         except Exception as e:
             print(f"❌ MLflow download error: {e}")
             if backup:
-                print(f"🔄 Restoring backup...")
+                print("🔄 Restoring backup...")
                 if local_mlruns.exists():
                     shutil.rmtree(local_mlruns)
                 shutil.move(backup, local_mlruns)

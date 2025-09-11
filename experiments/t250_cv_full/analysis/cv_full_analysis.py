@@ -9,25 +9,19 @@ Plots Generated:
 3. Training Curves - All 5 Folds
 """
 
-import os
 import sys
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
-import json
 import torch
-import torch.nn as nn
 from scipy import stats
-from datetime import datetime
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.append(str(project_root))
 
 from src.models.wave_source_resnet import WaveSourceMiniResNet
-from src.data.wave_dataset import WaveDataset
 
 # Set style for academic plots
 plt.style.use('seaborn-v0_8-whitegrid')
@@ -59,7 +53,7 @@ class CVFullAnalyzer:
         # Get MLflow data
         self.mlflow_path = self.data_path / "mlruns"
         
-        print(f"🔍 CV Full Analyzer initialized for T=250")
+        print("🔍 CV Full Analyzer initialized for T=250")
         print(f"📂 Data path: {self.data_path}")
         print(f"📊 Plots will be saved to: {self.plots_path}")
     
@@ -229,7 +223,7 @@ class CVFullAnalyzer:
         ax1.axvline(np.mean(individual_errors) + np.std(individual_errors), color='orange', 
                    linestyle='--', alpha=0.7, label=f'+1 STD: {np.std(individual_errors):.3f} px')
         ax1.axvline(np.mean(individual_errors) - np.std(individual_errors), color='orange', 
-                   linestyle='--', alpha=0.7, label=f'-1 STD')
+                   linestyle='--', alpha=0.7, label='-1 STD')
         ax1.set_title(f'Best Model (Fold {best_fold_idx + 1}) - Error Distribution (T=250)', fontweight='bold')
         ax1.set_xlabel('Prediction Error (pixels)')
         ax1.set_ylabel('Frequency')

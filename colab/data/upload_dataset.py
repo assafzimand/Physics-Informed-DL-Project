@@ -13,7 +13,6 @@ Requirements:
     - Google Drive mounted/synced on local machine
 """
 
-import os
 import shutil
 import sys
 from pathlib import Path
@@ -76,7 +75,7 @@ def main():
     target_file = target_dir / "wave_dataset_T500.h5"
     
     if target_file.exists():
-        print(f"⚠️  Dataset already exists in Drive")
+        print("⚠️  Dataset already exists in Drive")
         response = input("   Overwrite? (y/N): ").lower().strip()
         if response != 'y':
             print("   Upload cancelled")
@@ -86,7 +85,7 @@ def main():
         target_file.unlink()
         print("   Removed existing file")
     
-    print(f"📤 Uploading dataset to Google Drive...")
+    print("📤 Uploading dataset to Google Drive...")
     print(f"   From: {local_dataset}")
     print(f"   To:   {target_file}")
     
@@ -136,7 +135,7 @@ def verify_upload():
             wave_shape = f['wave_fields'].shape
             coord_shape = f['source_coords'].shape
             
-        print(f"✅ Dataset verification successful:")
+        print("✅ Dataset verification successful:")
         print(f"   📊 Keys: {keys}")
         print(f"   📏 Wave fields: {wave_shape}")
         print(f"   📍 Coordinates: {coord_shape}")

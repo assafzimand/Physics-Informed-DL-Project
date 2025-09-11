@@ -11,7 +11,6 @@ import sys
 import os
 import time
 import json
-import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -135,7 +134,7 @@ def create_validation_config(dataset_path):
     print(f"   Dataset: T=250 ({dataset_path})")
     print(f"   Hyperparameters: lr={config.learning_rate}, bs={config.batch_size}, opt={config.optimizer}")
     print(f"   Epochs: {config.num_epochs}")
-    print(f"   Expected time: ~2 hours")
+    print("   Expected time: ~2 hours")
     print(f"   Device: {config.device}")
     print(f"   Run name: {config.run_name}")
     
@@ -183,13 +182,13 @@ def analyze_results(training_history, training_duration):
     
     print(f"⏱️ Training Time: {training_duration:.1f} minutes")
     print(f"🏆 Best Epoch: {best_epoch}")
-    print(f"📊 Final Results:")
+    print("📊 Final Results:")
     print(f"   Training Loss: {final_train_loss:.4f}")
     print(f"   Validation Loss: {final_val_loss:.4f}")
     print(f"   Distance Error: {final_val_distance_error:.3f} px")
     
     # Performance assessment
-    print(f"\n📈 Performance Assessment:")
+    print("\n📈 Performance Assessment:")
     if final_val_distance_error <= 2.0:
         print(f"   ✅ EXCELLENT: {final_val_distance_error:.3f} px (≤ 2.0 px)")
         recommendation = "✅ RECOMMENDED: Proceed with full 5-fold CV training"
@@ -204,9 +203,9 @@ def analyze_results(training_history, training_duration):
         recommendation = "❌ RECOMMEND: Consider hyperparameter tuning before full CV"
     
     # Comparison with T=500 results
-    print(f"\n🔄 Comparison with T=500 Results:")
-    print(f"   T=500 Grid Search Best: 2.37 px")
-    print(f"   T=500 CV Average: 2.078 px")
+    print("\n🔄 Comparison with T=500 Results:")
+    print("   T=500 Grid Search Best: 2.37 px")
+    print("   T=500 CV Average: 2.078 px")
     print(f"   T=250 Validation: {final_val_distance_error:.3f} px")
     
     if final_val_distance_error < 2.5:
@@ -216,14 +215,14 @@ def analyze_results(training_history, training_duration):
     else:
         print("   ⚠️ T=250 performance is worse than T=500 - consider investigation")
     
-    print(f"\n🎯 RECOMMENDATION:")
+    print("\n🎯 RECOMMENDATION:")
     print(f"   {recommendation}")
     
     if "RECOMMENDED" in recommendation:
-        print(f"\n🚀 Next Steps:")
-        print(f"   1. Run full 5-fold CV training on T=250 dataset")
-        print(f"   2. Use same hyperparameters: lr=0.001, bs=32, adam")
-        print(f"   3. Expected full CV time: ~10 hours")
+        print("\n🚀 Next Steps:")
+        print("   1. Run full 5-fold CV training on T=250 dataset")
+        print("   2. Use same hyperparameters: lr=0.001, bs=32, adam")
+        print("   3. Expected full CV time: ~10 hours")
         print(f"   4. Expected CV performance: ~{final_val_distance_error:.1f} ± 0.3 px")
     
     return {
@@ -334,32 +333,32 @@ def save_results_to_drive(config, results, training_history, fig=None):
     # Create final report
     report_file = validation_dir / f"VALIDATION_REPORT_{timestamp}.md"
     with open(report_file, 'w') as f:
-        f.write(f"# T=250 Hyperparameter Validation Report\n\n")
+        f.write("# T=250 Hyperparameter Validation Report\n\n")
         f.write(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-        f.write(f"## 🎯 Objective\n")
-        f.write(f"Validate winning hyperparameters on T=250 dataset before full 5-fold CV.\n\n")
-        f.write(f"## 📊 Results\n")
+        f.write("## 🎯 Objective\n")
+        f.write("Validate winning hyperparameters on T=250 dataset before full 5-fold CV.\n\n")
+        f.write("## 📊 Results\n")
         f.write(f"- **Final Distance Error**: {results['final_val_distance_error']:.3f} px\n")
         f.write(f"- **Training Time**: {results['training_duration']:.1f} minutes\n")
         f.write(f"- **Best Epoch**: {results['best_epoch']}\n")
         f.write(f"- **Final Train Loss**: {results['final_train_loss']:.4f}\n")
         f.write(f"- **Final Val Loss**: {results['final_val_loss']:.4f}\n\n")
-        f.write(f"## 🔄 Comparison with T=500\n")
-        f.write(f"- **T=500 Grid Search Best**: 2.37 px\n")
-        f.write(f"- **T=500 CV Average**: 2.078 px\n")
+        f.write("## 🔄 Comparison with T=500\n")
+        f.write("- **T=500 Grid Search Best**: 2.37 px\n")
+        f.write("- **T=500 CV Average**: 2.078 px\n")
         f.write(f"- **T=250 Validation**: {results['final_val_distance_error']:.3f} px\n\n")
-        f.write(f"## 🎯 Recommendation\n")
+        f.write("## 🎯 Recommendation\n")
         f.write(f"{results['recommendation']}\n\n")
-        f.write(f"## 📁 Files in this validation\n")
+        f.write("## 📁 Files in this validation\n")
         f.write(f"- `validation_summary_{timestamp}.json`: Complete results data\n")
         f.write(f"- `training_curves_{timestamp}.png`: Training visualizations\n")
         f.write(f"- `VALIDATION_REPORT_{timestamp}.md`: This report\n")
     
     print(f"✅ Report saved: {report_file}")
     
-    print(f"\n🎉 ALL RESULTS SAVED TO DRIVE!")
+    print("\n🎉 ALL RESULTS SAVED TO DRIVE!")
     print(f"📁 Location: {validation_dir}")
-    print(f"🔄 Results are automatically synced to Google Drive!")
+    print("🔄 Results are automatically synced to Google Drive!")
 
 def main():
     """Main validation function."""
