@@ -8,6 +8,10 @@ Models are trained on HDF5 datasets with two regimes (T250 and T500), and tools 
 ## ⚡ Quickstart
 
 ```powershell
+# 0) Clone the repository and enter the folder
+git clone https://github.com/assafzimand/Physics-Informed-DL-Project.git
+cd Physics-Informed-DL-Project
+
 # 1) Create and activate a virtual environment (Windows)
 python -m venv venv
 .\venv\Scripts\Activate.ps1
