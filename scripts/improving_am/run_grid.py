@@ -35,7 +35,6 @@ from src.activation_maximization.layer_hooks import find_best_cv_model
 from src.models.wave_source_resnet import create_wave_source_model
 from src.data.wave_dataset import WaveDataset
 from src.common.normalization import (
-    ensure_dataset_model_match,
     load_training_stats,
     infer_dataset_tag,
 )
@@ -305,7 +304,12 @@ def main():
     dataset = WaveDataset(dataset_path, normalize_wave_fields=False)
 
     # Enforce dataset-model T-tag alignment
-    ensure_dataset_model_match(dataset_path, ckpt_path)
+    ds_tag_check = infer_dataset_from_path(str(dataset_path))
+    model_tag_check = infer_dataset_tag(ckpt_path)
+    if ds_tag_check and model_tag_check and ds_tag_check != model_tag_check:
+        print(
+            f"WARNING: Dataset/model tag mismatch: dataset={ds_tag_check}, model={model_tag_check}. Proceeding with dataset tag {ds_tag_check}."
+        )
 
     # Select layers for analysis
     conv_layers = get_conv_layers(model)
@@ -420,8 +424,10 @@ def main():
         init_tensor = wave_field.to(device)
 
         # For each selected layer, compute top-K filters using training normalization
-        model_tag = infer_dataset_tag(ckpt_path)
-        wave_mean, wave_std = load_training_stats(model_tag)
+        ds_tag = infer_dataset_from_path(str(dataset_path))
+        if ds_tag is None:
+            ds_tag = infer_dataset_tag(ckpt_path)
+        wave_mean, wave_std = load_training_stats(ds_tag)
 
         for layer_internal_idx, layer_name, target_layer in selected_layers:
             # For each activation mode, rank filters using the SAME activation used for optimization

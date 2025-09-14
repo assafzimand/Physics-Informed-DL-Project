@@ -24,7 +24,6 @@ import torch
 from src.common.paths import get_data_dir
 from src.common.normalization import (
     load_training_stats,
-    infer_dataset_tag,
 )
 from src.inference.inference import WaveSourceInference
 

@@ -52,6 +52,10 @@ results/models/*.pth
 colab/models/*.pth
 *.pth
 
+# Allowlist specific demo models
+!models/best_T250.pth
+!models/best_T500.pth
+
 # Large result files that can be regenerated
 results/grid_search_*/downloaded_*
 
