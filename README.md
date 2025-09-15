@@ -99,4 +99,4 @@ What it does:
 ---
 
 ## Links
-- Full technical report: see `
+- Full technical report: [Project Report (PDF)](docs/Project%20Report.pdf)  
