@@ -98,5 +98,6 @@ What it does:
 
 ---
 
-## Links
-- Full technical report: [Project Report (PDF)](docs/Project%20Report.pdf)  
+## References
+- Full technical report: [Project Report (PDF)](docs/Project%20Report.pdf)
+- For full experiment results, contact: [assafzimand@gmail.com](mailto:assafzimand@gmail.com)
