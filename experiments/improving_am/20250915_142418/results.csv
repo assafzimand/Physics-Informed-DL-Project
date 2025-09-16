@@ -1,0 +1,2 @@
+layer_idx,layer_name,filter_idx,sample_idx,iterations,learning_rate,tv_reg,l2_reg,activation_mode,final_activation,final_target_loss,final_suppression_loss,final_tv_loss,final_l2_loss,loss_reduction,grad_variation,loss_slope_lastk,loss_std_lastk,grad_mean_lastk,converged
+61,source_localization_stage4.1.wave_feature_conv2,243,1,1000,0.003,250.0,100.0,post_relu_mean,12.910250663757324,-12.910250663757324,1.6161901950836182,0.026995085179805756,0.02347021922469139,288.78658962249756,0.418906057795147,-0.056745663060436005,3.283754446980441,3.570016676187515,False

@@ -1,0 +1,43 @@
+{
+  "model_path": "models/best_T500.pth",
+  "layer_idx": 10,
+  "filter_idx": "auto",
+  "dataset_path": "data/wave_dataset_analysis_20samples.h5",
+  "sample_idx": 0,
+  "selection": {
+    "mode": "last_n",
+    "last_n_layers": 1,
+    "layer_indices": [],
+    "top_k_filters": 1,
+    "filters_by_layer": {}
+  },
+  "grid": {
+    "learning_rates": [
+      0.003
+    ],
+    "iterations": [
+      1000
+    ],
+    "tv_regs": [
+      250
+    ],
+    "l2_regs": [
+      100
+    ],
+    "activation_modes": [
+      "post_relu_mean"
+    ],
+    "sample_indices": [
+      1
+    ],
+    "suppression_weights": [
+      10
+    ]
+  },
+  "convergence": {
+    "last_k": 200,
+    "slope_eps": 0.05,
+    "std_eps": 0.5,
+    "grad_eps": 0.01
+  }
+}
