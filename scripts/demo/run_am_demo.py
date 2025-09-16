@@ -159,11 +159,15 @@ def main():
     except Exception:
         pass
 
-    # Choose layers
-    conv_layers: List[Tuple[str, torch.nn.Module]] = []
-    for name, module in model.named_modules():
+    # Choose layers (exclude skip/projection convs), track internal numeric indices
+    conv_layers: List[Tuple[int, str, torch.nn.Module]] = []
+    for idx, (name, module) in enumerate(model.named_modules()):
         if isinstance(module, torch.nn.Conv2d):
-            conv_layers.append((name, module))
+            name_has_skip = "skip_connection" in name
+            is_projection_1x1 = getattr(module, "kernel_size", None) == (1, 1)
+            if name_has_skip or is_projection_1x1:
+                continue
+            conv_layers.append((idx, name, module))
 
     if args.layer_mode == "last_n":
         selected = conv_layers[-args.last_n:]
@@ -195,7 +199,7 @@ def main():
         sample_dir.mkdir(parents=True, exist_ok=True)
         print(f"  - Sample {sample_idx}: ranking and optimizing")
 
-        for layer_name, layer in selected:
+        for internal_idx, layer_name, layer in selected:
             top_filters = rank_filters(
                 model,
                 device,
@@ -205,9 +209,11 @@ def main():
                 activation_mode=args.activation_mode,
             )
             for filt in top_filters:
-                am.register_hook(layer_name, layer)
+                # Label by numeric layer index to simplify titles/filenames
+                layer_label = f"{internal_idx}"
+                am.register_hook(layer_label, layer)
                 am.optimize_filter(
-                    layer_name=layer_name,
+                    layer_name=layer_label,
                     filter_idx=int(filt),
                     iterations=args.iterations,
                     learning_rate=args.lr,

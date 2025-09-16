@@ -98,10 +98,21 @@ def infer_dataset_from_path(ds_path: str) -> str | None:
 
 
 def get_conv_layers(model: torch.nn.Module) -> List[Tuple[int, str, torch.nn.Module]]:
-    """Finds all Conv2d layers in a model, returning their index, name, and module."""
+    """Find Conv2d layers, excluding skip/projection convs.
+
+    Returns a list of tuples: (internal_idx, qualified_name, module).
+
+    Exclusion rules:
+    - Names containing "skip_connection" (projection path inside residuals)
+    - 1x1 convolutions (typical projection convs)
+    """
     layers: List[Tuple[int, str, torch.nn.Module]] = []
     for idx, (name, module) in enumerate(model.named_modules()):
         if isinstance(module, torch.nn.Conv2d):
+            name_has_skip = "skip_connection" in name
+            is_projection_1x1 = getattr(module, "kernel_size", None) == (1, 1)
+            if name_has_skip or is_projection_1x1:
+                continue
             layers.append((idx, name, module))
     return layers
 

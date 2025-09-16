@@ -155,11 +155,15 @@ def main():
     print(f"Loaded best model from fold {fold_id} (error: {error:.2f}px)")
     print(f"Using device: {device}")
 
-    # --- 2. Get all Conv2D layers ---
-    print("\nAvailable Conv2D layers:")
+    # --- 2. Get Conv2D layers (exclude skip/projection convs) ---
+    print("\nAvailable Conv2D layers (main path only):")
     conv_layers = []
     for i, (name, module) in enumerate(model.named_modules()):
         if isinstance(module, torch.nn.Conv2d):
+            name_has_skip = "skip_connection" in name
+            is_projection_1x1 = getattr(module, "kernel_size", None) == (1, 1)
+            if name_has_skip or is_projection_1x1:
+                continue
             conv_layers.append((i, name, module))
             print(
                 f"  {len(conv_layers)-1:2d}: Layer {i:2d} - {name} ({module.out_channels} filters)"
