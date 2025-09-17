@@ -40,8 +40,8 @@ except ImportError:
     import subprocess
 
     try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "torchviz"])
-        from torchviz import make_dot
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "torchviz"])
+    from torchviz import make_dot
 
         print("✅ Torchviz installed successfully.")
     except Exception as e:
@@ -62,22 +62,22 @@ def create_torchviz_diagram(grid_size=128, output_dir: Path = None):
     if output_dir is None:
         output_dir = get_project_root() / "docs" / "images"
     output_dir.mkdir(parents=True, exist_ok=True)
-
+    
     print("🎨 Creating Torchviz visualization of WaveSourceMiniResNet...")
 
     # Create a model instance
     print(f"🏗️  Creating model instance (grid_size={grid_size})")
     model = create_wave_source_model(grid_size=grid_size)
     model.eval()
-
+    
     # Create a sample input tensor
     print(f"📊 Creating sample input tensor: [1, 1, {grid_size}, {grid_size}]")
     sample_input = torch.randn(1, 1, grid_size, grid_size, requires_grad=True)
-
+    
     # Run a forward pass to build the graph
     print("🔄 Running forward pass...")
     output = model(sample_input)
-
+    
     # Generate the computational graph
     print("🎯 Generating computational graph...")
     dot = make_dot(
@@ -115,7 +115,7 @@ def create_torchviz_diagram(grid_size=128, output_dir: Path = None):
         except Exception as e:
             print(f"   ❌ Failed to save {fmt}: {e}")
             print("      Ensure Graphviz is installed and in your system's PATH.")
-
+    
     print("\n🎉 Torchviz visualization complete!")
     print(f"   -> Files saved in: {output_dir}")
 
@@ -126,4 +126,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main() 

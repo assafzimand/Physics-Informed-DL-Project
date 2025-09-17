@@ -1,6 +1,6 @@
 # Physics-Informed Deep Learning for Wave-Source Localization
 
-This project develops a **physics-informed deep learning framework** to localize wave sources from simulated 2D wave fields.
+This project develops a **physics-informed deep learning framework** to localize wave sources from simulated 2D wave fields.  
 Models are trained on HDF5 datasets with two regimes (T250 and T500), and tools are provided for inference, visualization, and activation maximization.
 
 ---

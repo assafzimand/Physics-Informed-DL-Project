@@ -184,7 +184,12 @@ def run_one(
     out_dir.mkdir(parents=True, exist_ok=True)
     final_dir.mkdir(parents=True, exist_ok=True)
 
-    maximizer = SimpleActivationMaximizer(model, device, model_path=str(model_path))
+    maximizer = SimpleActivationMaximizer(
+        model,
+        device,
+        model_path=str(model_path),
+        dataset_name=str(params.get("dataset_name", "")) or None,
+    )
     maximizer.register_hook(f"layer{layer_idx}", layer)
 
     # Build concise run-identifying base name for files (no activation mode)
@@ -467,7 +472,11 @@ def main():
         sample_dir = base_out / f"sample_{int(sample_idx):04d}"
         sample_dir.mkdir(parents=True, exist_ok=True)
         wave_field, coords = dataset[int(sample_idx)]
-        init_tensor = wave_field.to(device)
+        init_tensor = wave_field
+        # Ensure 4D shape [B, C, H, W] for model input (dataset gives [C, H, W])
+        if hasattr(init_tensor, "dim") and init_tensor.dim() == 3:
+            init_tensor = init_tensor.unsqueeze(0)
+        init_tensor = init_tensor.to(device)
 
         # For each selected layer, compute top-K filters using training normalization
         ds_tag = infer_dataset_from_path(str(dataset_path))
@@ -546,6 +555,7 @@ def main():
                                             "suppression_weight": sup_w,
                                             "filter_idx": int(filt),
                                             "sample_idx": int(sample_idx),
+                                            "dataset_name": str(ds_tag),
                                             "ground_truth_xy": (
                                                 float(coords[0].item()) if hasattr(coords[0], "item") else float(coords[0]),
                                                 float(coords[1].item()) if hasattr(coords[1], "item") else float(coords[1]),
