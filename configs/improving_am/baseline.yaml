@@ -1,32 +1,32 @@
 # AM Grid Search Baseline Configuration
 
 # Explicit model checkpoint (T250 best). If empty, auto-resolves.
-model_path: "models/best_T500.pth"
+model_path: "models/best_T250.pth"
 
 # Fixed selections
 layer_idx: 10          # legacy single-layer path; ignored if selection.mode is set
 filter_idx: auto       # legacy single-filter path; ignored if selection.mode is set
 # Use the T250 20-sample analysis dataset
-dataset_path: data/wave_dataset_analysis_20samples.h5
+dataset_path: data/wave_dataset_T250_validation.h5
 sample_idx: 0          # unused when grid.sample_indices is provided
 
 # Multi-layer/multi-filter selection
 selection:
   mode: last_n           # options: last_n | explicit
-  last_n_layers: 19       # take last 5 Conv2d layers
+  last_n_layers: 2       # take last 5 Conv2d layers
   layer_indices: []      # when mode=explicit, list of layer indices in conv_layers list
-  top_k_filters: 3       # per selected layer, take top-5 active filters for the sample
+  top_k_filters: 2       # per selected layer, take top-5 active filters for the sample
   filters_by_layer: {}
 
 # Grid
 grid:
   learning_rates: [0.002]
-  iterations: [1000]
-  tv_regs: [15,25,35]
-  l2_regs: [10,20,25]
+  iterations: [500]
+  tv_regs: [15]
+  l2_regs: [5]
   activation_modes: [post_relu_mean]
-  sample_indices: [15,16,17,18,19]
-  suppression_weights: [7,8,9]
+  sample_indices: [0,1]
+  suppression_weights: [4,8]
 
 # Convergence criteria (evaluated over last K iterations)
 convergence:

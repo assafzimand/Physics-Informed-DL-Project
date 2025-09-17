@@ -156,6 +156,8 @@ class SimpleActivationMaximizer:
         l2_reg: float = 0.0,
         suppression_weight: float = 1.0,
         activation_mode: str = "post_relu_mean",
+        output_filename_base: Optional[str] = None,
+        ground_truth_xy: Optional[Tuple[float, float]] = None,
     ) -> Dict[str, Any]:
         """
         Runs the activation maximization optimization loop for a single filter.
@@ -463,6 +465,8 @@ class SimpleActivationMaximizer:
                 "suppression_weight": suppression_weight,
                 "loss_reduction": loss_reduction,
                 "grad_variation": grad_variation,
+                "file_basename": output_filename_base,
+                "ground_truth_xy": ground_truth_xy,
             },
         }
 
@@ -518,6 +522,22 @@ class SimpleActivationMaximizer:
         ax1.set_title("Initial Pattern\n(Model Input Space)", fontweight="bold")
         ax1.set_xticks([])
         ax1.set_yticks([])
+        # Overlay GT marker if available
+        gt = config.get("ground_truth_xy")
+        if gt is not None:
+            try:
+                gx, gy = float(gt[0]), float(gt[1])
+                ax1.scatter(
+                    [gx],
+                    [gy],
+                    color="lime",
+                    s=50,
+                    linewidths=2.0,
+                    marker="x",
+                    label="GT",
+                )
+            except Exception:
+                pass
         plt.colorbar(im1, ax=ax1, fraction=0.046, pad=0.04)
 
         ax2 = plt.subplot(3, 4, 2)
@@ -528,6 +548,22 @@ class SimpleActivationMaximizer:
         ax2.set_title("Final Optimized Pattern\n(Model Input Space)", fontweight="bold")
         ax2.set_xticks([])
         ax2.set_yticks([])
+        # Overlay GT marker if available
+        gt = config.get("ground_truth_xy")
+        if gt is not None:
+            try:
+                gx, gy = float(gt[0]), float(gt[1])
+                ax2.scatter(
+                    [gx],
+                    [gy],
+                    color="lime",
+                    s=50,
+                    linewidths=2.0,
+                    marker="x",
+                    label="GT",
+                )
+            except Exception:
+                pass
         plt.colorbar(im2, ax=ax2, fraction=0.046, pad=0.04)
 
         # Panel 2: Evolution timeline - 6 steps for 500 iterations (every 100)
@@ -677,10 +713,17 @@ class SimpleActivationMaximizer:
         plt.tight_layout()
 
         # Save plot
-        filename = f"comprehensive_layer_{config['layer_name']}_filter_{config['filter_idx']:02d}"
-        if config["use_real_data_init"]:
-            filename += "_REAL_INIT"
-        filename += ".png"
+        # Prefer caller-provided concise basename when available
+        if config.get("file_basename"):
+            filename = f"{config['file_basename']}.png"
+        else:
+            filename = (
+                f"comprehensive_layer_{config['layer_name']}_filter_"
+                f"{config['filter_idx']:02d}"
+            )
+            if config["use_real_data_init"]:
+                filename += "_REAL_INIT"
+            filename += ".png"
 
         save_path = save_dir / filename
         plt.savefig(save_path, dpi=150, bbox_inches="tight")

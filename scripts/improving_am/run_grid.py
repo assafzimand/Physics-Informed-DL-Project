@@ -170,6 +170,7 @@ def run_one(
     device: torch.device,
     params: Dict[str, Any],
     out_dir: Path,
+    final_dir: Path,
 ) -> Dict[str, Any]:
     """
     Executes a single activation maximization run for one set of hyperparameters.
@@ -181,23 +182,47 @@ def run_one(
         A dictionary containing the summary of the run's results and metrics.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
+    final_dir.mkdir(parents=True, exist_ok=True)
 
     maximizer = SimpleActivationMaximizer(model, device, model_path=str(model_path))
-    maximizer.register_hook("target_layer", layer)
+    maximizer.register_hook(f"layer{layer_idx}", layer)
+
+    # Build concise run-identifying base name for files (no activation mode)
+    def _fmt_num(x: float) -> str:
+        try:
+            xi = int(x)
+            if float(xi) == float(x):
+                return str(xi)
+        except Exception:
+            pass
+        return ("%g" % float(x))
+
+    try:
+        samp = int(params.get("sample_idx", -1))
+    except Exception:
+        samp = -1
+    file_base = (
+        f"s{int(samp)}_layer{int(layer_idx)}_f{int(params.get('filter_idx', 0))}"
+        f"_it{int(params['iterations'])}_lr{_fmt_num(params['learning_rate'])}"
+        f"_tv{_fmt_num(params.get('tv_reg', 0.0))}_l2{_fmt_num(params.get('l2_reg', 0.0))}"
+        f"_sup{_fmt_num(params.get('suppression_weight', 1.0))}"
+    )
 
     try:
         results = maximizer.optimize_filter(
-            layer_name="target_layer",
+            layer_name=f"layer{layer_idx}",
             filter_idx=int(params.get("filter_idx", 0)),  # default 0 if not set
             iterations=int(params["iterations"]),
             learning_rate=float(params["learning_rate"]),
             use_real_data_init=False,
             init_tensor=init_tensor,  # RAW tensor: [1, 1, H, W]
-            save_dir=str(out_dir),
+            save_dir=str(final_dir),
             tv_reg=float(params.get("tv_reg", 0.0)),
             l2_reg=float(params.get("l2_reg", 0.0)),
             activation_mode=str(params.get("activation_mode", "mean_abs")),
             suppression_weight=float(params.get("suppression_weight", 1.0)),
+            output_filename_base=file_base,
+            ground_truth_xy=params.get("ground_truth_xy"),
         )
 
         mon = results["monitoring_data"]
@@ -229,9 +254,17 @@ def run_one(
             **conv,
         }
 
-        # Save JSON per-run
-        with open(out_dir / "summary.json", "w") as f:
+        # Plot is already saved with file_base in out_dir by the maximizer
+
+        # Save JSON per-run with short name to avoid long paths
+        summary_path = out_dir / "summary.json"
+        with open(summary_path, "w") as f:
             json.dump(summary, f, indent=2)
+        # Also place a copy in the layer folder with concise name
+        try:
+            (final_dir / f"{file_base}.json").write_text(summary_path.read_text())
+        except Exception:
+            pass
 
         return summary
 
@@ -431,7 +464,9 @@ def main():
     run_idx = 0
     # Iterate over samples
     for sample_idx in sample_indices:
-        wave_field, _ = dataset[int(sample_idx)]
+        sample_dir = base_out / f"sample_{int(sample_idx):04d}"
+        sample_dir.mkdir(parents=True, exist_ok=True)
+        wave_field, coords = dataset[int(sample_idx)]
         init_tensor = wave_field.to(device)
 
         # For each selected layer, compute top-K filters using training normalization
@@ -441,6 +476,8 @@ def main():
         wave_mean, wave_std = load_training_stats(ds_tag)
 
         for layer_internal_idx, layer_name, target_layer in selected_layers:
+            layer_dir = sample_dir / f"layer_{int(layer_internal_idx)}"
+            layer_dir.mkdir(parents=True, exist_ok=True)
             # For each activation mode, rank filters using the SAME activation used for optimization
             for act in activation_modes:
                 # Determine top filters for this act
@@ -508,9 +545,15 @@ def main():
                                             "activation_mode": act,
                                             "suppression_weight": sup_w,
                                             "filter_idx": int(filt),
+                                            "sample_idx": int(sample_idx),
+                                            "ground_truth_xy": (
+                                                float(coords[0].item()) if hasattr(coords[0], "item") else float(coords[0]),
+                                                float(coords[1].item()) if hasattr(coords[1], "item") else float(coords[1]),
+                                            ),
                                             "convergence": convergence_cfg,
                                         }
-                                        run_dir = base_out / (
+                                        # Working directory for this run lives under the sample/layer folder
+                                        run_dir = layer_dir / (
                                             f"run_{run_idx:04d}_s{sample_idx}_layer{layer_internal_idx}_f{filt}_it{iters}_lr{lr}_tv{tv}_l2{l2}_sup{sup_w}_act{act}"
                                         )
 
@@ -521,6 +564,7 @@ def main():
                                         print(
                                             f"iters={iters}, lr={lr}, tv_reg={tv}, l2_reg={l2}, sup_w={sup_w}, act={act}"
                                         )
+                                        # Pass final target folder (sample/layer) for organized outputs
                                         summary = run_one(
                                             model,
                                             ckpt_path,
@@ -530,6 +574,7 @@ def main():
                                             device,
                                             run_params,
                                             run_dir,
+                                            layer_dir,
                                         )
 
                                         # Augment summary with identifiers

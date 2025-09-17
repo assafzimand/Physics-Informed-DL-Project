@@ -61,6 +61,8 @@ results/grid_search_*/downloaded_*
 
 # Activation Maximization results
 experiments/activation_maximization/improving_am_results/
+# Ignore entire improving_am experiment tree (grid outputs)
+experiments/improving_am/
 # Ignore MLflow runs (entire trees)
 mlruns/
 **/mlruns/
