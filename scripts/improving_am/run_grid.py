@@ -441,33 +441,33 @@ def main():
     base_out = Path(args.out_dir) / timestamp
     base_out.mkdir(parents=True, exist_ok=True)
 
-    # Master CSV
-    csv_path = base_out / "results.csv"
-    csv_fields = [
-        "layer_idx",
-        "layer_name",
-        "filter_idx",
-        "sample_idx",
-        "iterations",
-        "learning_rate",
-        "tv_reg",
-        "l2_reg",
-        "activation_mode",
-        "final_activation",
-        "final_target_loss",
-        "final_suppression_loss",
-        "final_tv_loss",
-        "final_l2_loss",
-        "loss_reduction",
-        "grad_variation",
-        "loss_slope_lastk",
-        "loss_std_lastk",
-        "grad_mean_lastk",
-        "converged",
-    ]
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=csv_fields)
-        writer.writeheader()
+    # Master CSV (disabled: save PNGs only)
+    # csv_path = base_out / "results.csv"
+    # csv_fields = [
+    #     "layer_idx",
+    #     "layer_name",
+    #     "filter_idx",
+    #     "sample_idx",
+    #     "iterations",
+    #     "learning_rate",
+    #     "tv_reg",
+    #     "l2_reg",
+    #     "activation_mode",
+    #     "final_activation",
+    #     "final_target_loss",
+    #     "final_suppression_loss",
+    #     "final_tv_loss",
+    #     "final_l2_loss",
+    #     "loss_reduction",
+    #     "grad_variation",
+    #     "loss_slope_lastk",
+    #     "loss_std_lastk",
+    #     "grad_mean_lastk",
+    #     "converged",
+    # ]
+    # with open(csv_path, "w", newline="") as f:
+    #     writer = csv.DictWriter(f, fieldnames=csv_fields)
+    #     writer.writeheader()
 
     run_idx = 0
     # Iterate over samples
@@ -572,10 +572,10 @@ def main():
                                             ),
                                             "convergence": convergence_cfg,
                                         }
-                                        # Working directory for this run lives under the layer/filter folder
-                                        run_dir = filter_dir / (
-                                            f"run_{run_idx:04d}_s{sample_idx}_layer{layer_internal_idx}_f{filt}_it{iters}_lr{lr}_tv{tv}_l2{l2}_sup{sup_w}_act{act}"
-                                        )
+                                        # Working directory for runs (disabled: PNGs only)
+                                        # run_dir = filter_dir / (
+                                        #     f"run_{run_idx:04d}_s{sample_idx}_layer{layer_internal_idx}_f{filt}_it{iters}_lr{lr}_tv{tv}_l2{l2}_sup{sup_w}_act{act}"
+                                        # )
 
                                         print(f"\n===== RUN {run_idx} =====")
                                         print(
@@ -593,24 +593,25 @@ def main():
                                             init_tensor,
                                             device,
                                             run_params,
-                                            run_dir,
-                                            filter_dir,
+                                            filter_dir,   # out_dir (unused when PNG-only)
+                                            filter_dir,   # final_dir (PNG target)
                                         )
 
                                         # Augment summary with identifiers
                                         summary["layer_name"] = layer_name
                                         summary["sample_idx"] = int(sample_idx)
 
-                                        with open(csv_path, "a", newline="") as f:
-                                            writer = csv.DictWriter(
-                                                f, fieldnames=csv_fields
-                                            )
-                                            writer.writerow(
-                                                {
-                                                    k: summary.get(k, "")
-                                                    for k in csv_fields
-                                                }
-                                            )
+                                        # Append to CSV (disabled: PNGs only)
+                                        # with open(csv_path, "a", newline="") as f:
+                                        #     writer = csv.DictWriter(
+                                        #         f, fieldnames=csv_fields
+                                        #     )
+                                        #     writer.writerow(
+                                        #         {
+                                        #             k: summary.get(k, "")
+                                        #             for k in csv_fields
+                                        #         }
+                                        #     )
 
                                         run_idx += 1
 
