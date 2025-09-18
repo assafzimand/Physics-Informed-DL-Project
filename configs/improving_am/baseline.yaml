@@ -12,21 +12,23 @@ sample_idx: 0          # unused when grid.sample_indices is provided
 
 # Multi-layer/multi-filter selection
 selection:
-  mode: last_n           # options: last_n | explicit
-  last_n_layers: 2       # take last 5 Conv2d layers
-  layer_indices: []      # when mode=explicit, list of layer indices in conv_layers list
-  top_k_filters: 2       # per selected layer, take top-5 active filters for the sample
+  mode: explicit          # options: last_n | explicit
+  last_n_layers: 20       # ignored in explicit mode
+  # IMPORTANT: layer_indices are 0-based positions in the conv_layers list
+  # (after filtering skip/projection convs), not internal named_modules ids.
+  layer_indices: [0]      # e.g., 0 is the first Conv2d encountered, up to 16
+  top_k_filters: 2
   filters_by_layer: {}
 
 # Grid
 grid:
-  learning_rates: [0.002]
+  learning_rates: [0.0005]
   iterations: [500]
-  tv_regs: [15]
-  l2_regs: [5]
+  tv_regs: [50]
+  l2_regs: [50]
   activation_modes: [post_relu_mean]
   sample_indices: [0,1]
-  suppression_weights: [4,8]
+  suppression_weights: [4]
 
 # Convergence criteria (evaluated over last K iterations)
 convergence:

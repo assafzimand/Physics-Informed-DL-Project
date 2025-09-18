@@ -469,8 +469,6 @@ def main():
     run_idx = 0
     # Iterate over samples
     for sample_idx in sample_indices:
-        sample_dir = base_out / f"sample_{int(sample_idx):04d}"
-        sample_dir.mkdir(parents=True, exist_ok=True)
         wave_field, coords = dataset[int(sample_idx)]
         init_tensor = wave_field
         # Ensure 4D shape [B, C, H, W] for model input (dataset gives [C, H, W])
@@ -485,7 +483,8 @@ def main():
         wave_mean, wave_std = load_training_stats(ds_tag)
 
         for layer_internal_idx, layer_name, target_layer in selected_layers:
-            layer_dir = sample_dir / f"layer_{int(layer_internal_idx)}"
+            # Layer-first structure at the timestamp root
+            layer_dir = base_out / f"layer_{int(layer_internal_idx)}"
             layer_dir.mkdir(parents=True, exist_ok=True)
             # For each activation mode, rank filters using the SAME activation used for optimization
             for act in activation_modes:
@@ -541,6 +540,9 @@ def main():
                     top_filters = [0]
 
                 for filt in top_filters:
+                    # Create per-filter folder under the layer
+                    filter_dir = layer_dir / f"filter_{int(filt)}"
+                    filter_dir.mkdir(parents=True, exist_ok=True)
                     for iters in iterations_list:
                         for lr in learning_rates:
                             for tv in tv_regs:
@@ -562,8 +564,8 @@ def main():
                                             ),
                                             "convergence": convergence_cfg,
                                         }
-                                        # Working directory for this run lives under the sample/layer folder
-                                        run_dir = layer_dir / (
+                                        # Working directory for this run lives under the layer/filter folder
+                                        run_dir = filter_dir / (
                                             f"run_{run_idx:04d}_s{sample_idx}_layer{layer_internal_idx}_f{filt}_it{iters}_lr{lr}_tv{tv}_l2{l2}_sup{sup_w}_act{act}"
                                         )
 
@@ -584,7 +586,7 @@ def main():
                                             device,
                                             run_params,
                                             run_dir,
-                                            layer_dir,
+                                            filter_dir,
                                         )
 
                                         # Augment summary with identifiers
