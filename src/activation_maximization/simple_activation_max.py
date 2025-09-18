@@ -530,9 +530,9 @@ class SimpleActivationMaximizer:
                 ax1.scatter(
                     [gx],
                     [gy],
-                    color="lime",
-                    s=50,
-                    linewidths=2.0,
+                    color="black",
+                    s=70,
+                    linewidths=2.5,
                     marker="x",
                     label="GT",
                 )
@@ -556,9 +556,9 @@ class SimpleActivationMaximizer:
                 ax2.scatter(
                     [gx],
                     [gy],
-                    color="lime",
-                    s=50,
-                    linewidths=2.0,
+                    color="black",
+                    s=70,
+                    linewidths=2.5,
                     marker="x",
                     label="GT",
                 )
@@ -629,33 +629,55 @@ class SimpleActivationMaximizer:
         ax3.legend(fontsize=8)
         ax3.grid(True, alpha=0.3)
 
-        ax3_twin = ax3.twinx()
-        ax3_twin.plot(iterations, activations, "g-", label="Activation", linewidth=2)
-        ax3_twin.set_ylabel("Activation", color="g")
-        ax3_twin.tick_params(axis="y", labelcolor="g")
-
         ax3.set_title("Optimization Progress", fontweight="bold")
 
-        # Panel 4: Gradient analysis
+        # Panel 4: Final feature map for target filter
         ax4 = plt.subplot(3, 4, 10)
-        grad_mags = monitoring_data["grad_magnitude"]
-        ax4.plot(iterations, grad_mags, "purple", linewidth=2)
-        ax4.set_xlabel("Iteration")
-        ax4.set_ylabel("Gradient Magnitude")
-        ax4.set_title("Gradient Evolution", fontweight="bold")
-        ax4.grid(True, alpha=0.3)
+        # Forward the final optimized input to capture layer activations
+        try:
+            with torch.no_grad():
+                final_in = (results["best_pattern"] - wave_mean) / wave_std
+                _ = self.model(final_in)
+            fmap = None
+            if config["layer_name"] in self.activations:
+                layer_out = self.activations[config["layer_name"]]
+                if layer_out is not None and layer_out.ndim == 4:
+                    fmap = layer_out[0, int(config["filter_idx"])].detach().cpu().numpy()
+            if fmap is not None:
+                im_fm = ax4.imshow(fmap, cmap="RdBu_r", interpolation="nearest")
+                ax4.set_title("Final Feature Map", fontweight="bold")
+                ax4.set_xticks([])
+                ax4.set_yticks([])
+                # Overlay GT on feature map as well
+                gt = config.get("ground_truth_xy")
+                if gt is not None:
+                    try:
+                        gx, gy = float(gt[0]), float(gt[1])
+                        # Map original-grid coords (e.g., 128x128) to feature-map size
+                        H, W = fmap.shape
+                        base = getattr(self.model, "grid_size", 128)
+                        px = gx * (W / float(base))
+                        py = gy * (H / float(base))
+                        ax4.scatter(
+                            [px],
+                            [py],
+                            color="black",
+                            s=70,
+                            linewidths=2.5,
+                            marker="x",
+                            label="GT",
+                        )
+                    except Exception:
+                        pass
+                plt.colorbar(im_fm, ax=ax4, fraction=0.046, pad=0.04)
+            else:
+                ax4.text(0.5, 0.5, "Feature map unavailable", ha="center", va="center")
+                ax4.set_axis_off()
+        except Exception:
+            ax4.text(0.5, 0.5, "Feature map error", ha="center", va="center")
+            ax4.set_axis_off()
 
-        # Panel 5: Input statistics
-        ax5 = plt.subplot(3, 4, 11)
-        input_means = monitoring_data["input_mean"]
-        input_stds = monitoring_data["input_std"]
-        ax5.plot(iterations, input_means, "g-", label="Mean", linewidth=2)
-        ax5.plot(iterations, input_stds, "m-", label="Std", linewidth=2)
-        ax5.set_xlabel("Iteration")
-        ax5.set_ylabel("Input Statistics")
-        ax5.legend()
-        ax5.grid(True, alpha=0.3)
-        ax5.set_title("Input Evolution", fontweight="bold")
+        # Panel 5 removed per request (input mean/std over iterations)
 
         # Panel 6: Summary statistics
         ax6 = plt.subplot(3, 4, 12)

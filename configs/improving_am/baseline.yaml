@@ -17,18 +17,18 @@ selection:
   # IMPORTANT: layer_indices are 0-based positions in the conv_layers list
   # (after filtering skip/projection convs), not internal named_modules ids.
   layer_indices: [0]      # e.g., 0 is the first Conv2d encountered, up to 16
-  top_k_filters: 32
+  top_k_filters: 2
   filters_by_layer: {}
 
 # Grid
 grid:
   learning_rates: [0.0005]
   iterations: [500]
-  tv_regs: [50]
-  l2_regs: [50]
+  tv_regs: [20]
+  l2_regs: [20]
   activation_modes: [post_relu_mean]
-  sample_indices: [0,1]
-  suppression_weights: [4]
+  sample_indices: [0]
+  suppression_weights: [1]
 
 # Convergence criteria (evaluated over last K iterations)
 convergence:
