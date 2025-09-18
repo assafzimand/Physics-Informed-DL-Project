@@ -22,8 +22,8 @@ selection:
 
 # Grid
 grid:
-  learning_rates: [0.0005]
-  iterations: [500]
+  learning_rates: [0.002]
+  iterations: [100]
   tv_regs: [20]
   l2_regs: [20]
   activation_modes: [post_relu_mean]

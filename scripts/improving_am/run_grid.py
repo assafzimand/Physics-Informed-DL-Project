@@ -214,6 +214,7 @@ def run_one(
     )
 
     try:
+        save_every = max(1, int(params["iterations"]) // 5)
         results = maximizer.optimize_filter(
             layer_name=f"layer{layer_idx}",
             filter_idx=int(params.get("filter_idx", 0)),  # default 0 if not set
@@ -222,6 +223,8 @@ def run_one(
             use_real_data_init=False,
             init_tensor=init_tensor,  # RAW tensor: [1, 1, H, W]
             save_dir=str(final_dir),
+            save_intermediate=True,
+            save_every=save_every,
             tv_reg=float(params.get("tv_reg", 0.0)),
             l2_reg=float(params.get("l2_reg", 0.0)),
             activation_mode=str(params.get("activation_mode", "mean_abs")),

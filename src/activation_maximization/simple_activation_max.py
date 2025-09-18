@@ -631,9 +631,44 @@ class SimpleActivationMaximizer:
 
         ax3.set_title("Optimization Progress", fontweight="bold")
 
-        # Panel 4: Final feature map for target filter
+        # Panel 4: Initial feature map for target filter (from the dataset sample)
         ax4 = plt.subplot(3, 4, 10)
-        # Forward the final optimized input to capture layer activations
+        try:
+            with torch.no_grad():
+                init_in = (results["initial_pattern"] - wave_mean) / wave_std
+                _ = self.model(init_in)
+            fmap0 = None
+            if config["layer_name"] in self.activations:
+                layer_out0 = self.activations[config["layer_name"]]
+                if layer_out0 is not None and layer_out0.ndim == 4:
+                    fmap0 = layer_out0[0, int(config["filter_idx"])].detach().cpu().numpy()
+            if fmap0 is not None:
+                im_fm0 = ax4.imshow(fmap0, cmap="RdBu_r", interpolation="nearest")
+                ax4.set_title("Initial Feature Map", fontweight="bold")
+                ax4.set_xticks([])
+                ax4.set_yticks([])
+                # Overlay GT scaled to fmap size
+                gt = config.get("ground_truth_xy")
+                if gt is not None:
+                    try:
+                        gx, gy = float(gt[0]), float(gt[1])
+                        H0, W0 = fmap0.shape
+                        base = getattr(self.model, "grid_size", 128)
+                        px0 = gx * (W0 / float(base))
+                        py0 = gy * (H0 / float(base))
+                        ax4.scatter([px0], [py0], color="black", s=70, linewidths=2.5, marker="x")
+                    except Exception:
+                        pass
+                plt.colorbar(im_fm0, ax=ax4, fraction=0.046, pad=0.04)
+            else:
+                ax4.text(0.5, 0.5, "Feature map unavailable", ha="center", va="center")
+                ax4.set_axis_off()
+        except Exception:
+            ax4.text(0.5, 0.5, "Feature map error", ha="center", va="center")
+            ax4.set_axis_off()
+
+        # Panel 5: Final feature map for target filter (from the optimized input)
+        ax5 = plt.subplot(3, 4, 11)
         try:
             with torch.no_grad():
                 final_in = (results["best_pattern"] - wave_mean) / wave_std
@@ -644,40 +679,31 @@ class SimpleActivationMaximizer:
                 if layer_out is not None and layer_out.ndim == 4:
                     fmap = layer_out[0, int(config["filter_idx"])].detach().cpu().numpy()
             if fmap is not None:
-                im_fm = ax4.imshow(fmap, cmap="RdBu_r", interpolation="nearest")
-                ax4.set_title("Final Feature Map", fontweight="bold")
-                ax4.set_xticks([])
-                ax4.set_yticks([])
-                # Overlay GT on feature map as well
+                im_fm = ax5.imshow(fmap, cmap="RdBu_r", interpolation="nearest")
+                ax5.set_title("Final Feature Map", fontweight="bold")
+                ax5.set_xticks([])
+                ax5.set_yticks([])
+                # Overlay GT scaled to fmap size
                 gt = config.get("ground_truth_xy")
                 if gt is not None:
                     try:
                         gx, gy = float(gt[0]), float(gt[1])
-                        # Map original-grid coords (e.g., 128x128) to feature-map size
                         H, W = fmap.shape
                         base = getattr(self.model, "grid_size", 128)
                         px = gx * (W / float(base))
                         py = gy * (H / float(base))
-                        ax4.scatter(
-                            [px],
-                            [py],
-                            color="black",
-                            s=70,
-                            linewidths=2.5,
-                            marker="x",
-                            label="GT",
-                        )
+                        ax5.scatter([px], [py], color="black", s=70, linewidths=2.5, marker="x")
                     except Exception:
                         pass
-                plt.colorbar(im_fm, ax=ax4, fraction=0.046, pad=0.04)
+                plt.colorbar(im_fm, ax=ax5, fraction=0.046, pad=0.04)
             else:
-                ax4.text(0.5, 0.5, "Feature map unavailable", ha="center", va="center")
-                ax4.set_axis_off()
+                ax5.text(0.5, 0.5, "Feature map unavailable", ha="center", va="center")
+                ax5.set_axis_off()
         except Exception:
-            ax4.text(0.5, 0.5, "Feature map error", ha="center", va="center")
-            ax4.set_axis_off()
+            ax5.text(0.5, 0.5, "Feature map error", ha="center", va="center")
+            ax5.set_axis_off()
 
-        # Panel 5 removed per request (input mean/std over iterations)
+        # Panel 5 previously showed input stats; now used for Final Feature Map
 
         # Panel 6: Summary statistics
         ax6 = plt.subplot(3, 4, 12)
