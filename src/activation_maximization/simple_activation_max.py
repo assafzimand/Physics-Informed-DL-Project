@@ -558,7 +558,7 @@ class SimpleActivationMaximizer:
                 r = int(config["rank_within_layer"]) + 1
                 t = int(config["total_filters_in_layer"])
                 ax2.text(
-                    1.15,
+                    1.5,
                     0.5,
                     f"rank: {r}/{t}",
                     transform=ax2.transAxes,
