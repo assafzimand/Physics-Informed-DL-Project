@@ -158,6 +158,8 @@ class SimpleActivationMaximizer:
         activation_mode: str = "post_relu_mean",
         output_filename_base: Optional[str] = None,
         ground_truth_xy: Optional[Tuple[float, float]] = None,
+        rank_within_layer: Optional[int] = None,
+        total_filters_in_layer: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
         Runs the activation maximization optimization loop for a single filter.
@@ -467,6 +469,8 @@ class SimpleActivationMaximizer:
                 "grad_variation": grad_variation,
                 "file_basename": output_filename_base,
                 "ground_truth_xy": ground_truth_xy,
+                "rank_within_layer": rank_within_layer,
+                "total_filters_in_layer": total_filters_in_layer,
             },
         }
 
@@ -548,6 +552,25 @@ class SimpleActivationMaximizer:
         ax2.set_title("Final Optimized Pattern\n(Model Input Space)", fontweight="bold")
         ax2.set_xticks([])
         ax2.set_yticks([])
+        # Large rank label to the right of the final result panel
+        if config.get("rank_within_layer") is not None and config.get("total_filters_in_layer"):
+            try:
+                r = int(config["rank_within_layer"]) + 1
+                t = int(config["total_filters_in_layer"])
+                ax2.text(
+                    1.15,
+                    0.5,
+                    f"rank: {r}/{t}",
+                    transform=ax2.transAxes,
+                    fontsize=18,
+                    fontweight="bold",
+                    color="black",
+                    va="center",
+                    ha="left",
+                    clip_on=False,
+                )
+            except Exception:
+                pass
         # Overlay GT marker if available
         gt = config.get("ground_truth_xy")
         if gt is not None:
@@ -750,9 +773,14 @@ class SimpleActivationMaximizer:
             regs.append(f"L2 lambda={config['l2_reg']}")
         reg_status = " | ".join(regs) if regs else "NO REG"
 
+        # Compose rank text if available
+        rank_text = ""
+        if config.get("rank_within_layer") is not None and config.get("total_filters_in_layer"):
+            rank_text = f" | rank: {int(config['rank_within_layer'])+1}/{int(config['total_filters_in_layer'])}"
+
         fig.suptitle(
             f"Comprehensive Activation Maximization\n"
-            f'{config["layer_name"]} Filter {config["filter_idx"]} | '
+            f'{config["layer_name"]} Filter {config["filter_idx"]}{rank_text} | '
             f"{norm_status} | {init_status} INIT | {reg_status}",
             fontsize=16,
             fontweight="bold",
@@ -763,7 +791,14 @@ class SimpleActivationMaximizer:
         # Save plot
         # Prefer caller-provided concise basename when available
         if config.get("file_basename"):
-            filename = f"{config['file_basename']}.png"
+            # Append rank to filename when provided
+            if config.get("rank_within_layer") is not None and config.get("total_filters_in_layer"):
+                filename = (
+                    f"{config['file_basename']}_rank{int(config['rank_within_layer'])+1}"
+                    f"from{int(config['total_filters_in_layer'])}.png"
+                )
+            else:
+                filename = f"{config['file_basename']}.png"
         else:
             filename = (
                 f"comprehensive_layer_{config['layer_name']}_filter_"

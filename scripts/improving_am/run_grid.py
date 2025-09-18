@@ -231,6 +231,8 @@ def run_one(
             suppression_weight=float(params.get("suppression_weight", 1.0)),
             output_filename_base=file_base,
             ground_truth_xy=params.get("ground_truth_xy"),
+            rank_within_layer=int(params.get("rank_within_layer", -1)) if params.get("rank_within_layer") is not None else None,
+            total_filters_in_layer=int(params.get("total_filters_in_layer", 0)) if params.get("total_filters_in_layer") is not None else None,
         )
 
         mon = results["monitoring_data"]
@@ -497,58 +499,69 @@ def main():
                     if layer_internal_idx in filters_by_layer:
                         top_filters = filters_by_layer[layer_internal_idx]
                     else:
-                        # If asking for all filters, bypass ranking and take 0..C-1 so filters are consistent across samples
-                        num_filters = getattr(target_layer, "out_channels", None)
-                        if num_filters is not None and top_k_filters >= int(num_filters):
-                            top_filters = list(range(int(num_filters)))
-                        elif not (
-                        isinstance(filter_idx_cfg, str)
-                        and filter_idx_cfg.lower() == "auto"
+                        # Compute activation scores for ranking (even if we will select all filters)
+                        with torch.no_grad():
+                            norm_sample = (init_tensor - wave_mean) / wave_std
+                            activations: Dict[str, torch.Tensor] = {}
+
+                            def hook_fn(m, i, o):
+                                activations["t"] = o.detach()
+
+                            h = target_layer.register_forward_hook(hook_fn)
+                            _ = model(norm_sample)
+                            h.remove()
+                            layer_out = activations.get("t")
+                            if layer_out is None:
+                                raise RuntimeError(
+                                    "Failed to capture activations for ranking"
+                                )
+                            if act == "mean_abs":
+                                scores = layer_out.abs().mean(dim=(0, 2, 3))
+                            elif act == "mean":
+                                scores = layer_out.mean(dim=(0, 2, 3))
+                            elif act == "l2":
+                                scores = (layer_out.pow(2).sum(dim=(2, 3)).sqrt()).mean(
+                                    dim=0
+                                )
+                            elif act == "post_relu_mean":
+                                scores = torch.relu(layer_out).mean(dim=(0, 2, 3))
+                            else:
+                                raise ValueError(
+                                    f"Unsupported activation_mode for ranking: {act}"
+                                )
+                            order = torch.argsort(scores, descending=True)
+                            order_list = order.cpu().tolist()
+                            # Build rank map: filter_idx -> 0-based rank position
+                            rank_map = {int(f_idx): int(pos) for pos, f_idx in enumerate(order_list)}
+
+                        num_filters = getattr(target_layer, "out_channels", None) or len(order_list)
+                        if not (
+                            isinstance(filter_idx_cfg, str)
+                            and filter_idx_cfg.lower() == "auto"
                         ) and not (isinstance(filter_idx_cfg, int) and filter_idx_cfg < 0):
                             top_filters = [int(filter_idx_cfg)]
+                        elif top_k_filters >= int(num_filters):
+                            # Select all filters but keep per-sample rank via rank_map
+                            top_filters = list(range(int(num_filters)))
                         else:
-                            with torch.no_grad():
-                                norm_sample = (init_tensor - wave_mean) / wave_std
-                                activations: Dict[str, torch.Tensor] = {}
-
-                                def hook_fn(m, i, o):
-                                    activations["t"] = o.detach()
-
-                                h = target_layer.register_forward_hook(hook_fn)
-                                _ = model(norm_sample)
-                                h.remove()
-                                layer_out = activations.get("t")
-                                if layer_out is None:
-                                    raise RuntimeError(
-                                        "Failed to capture activations for ranking"
-                                    )
-                                if act == "mean_abs":
-                                    scores = layer_out.abs().mean(dim=(0, 2, 3))
-                                elif act == "mean":
-                                    scores = layer_out.mean(dim=(0, 2, 3))
-                                elif act == "l2":
-                                    scores = (
-                                        layer_out.pow(2).sum(dim=(2, 3)).sqrt()
-                                    ).mean(dim=0)
-                                elif act == "post_relu_mean":
-                                    scores = torch.relu(layer_out).mean(dim=(0, 2, 3))
-                                else:
-                                    raise ValueError(
-                                        f"Unsupported activation_mode for ranking: {act}"
-                                    )
-                                top_filters = (
-                                    torch.argsort(scores, descending=True)[:top_k_filters]
-                                    .cpu()
-                                    .tolist()
-                                )
+                            top_filters = order[:top_k_filters].cpu().tolist()
                 except Exception as e:
                     print(
                         f"WARNING: Ranking failed for layer {layer_internal_idx} (act={act}): {e}"
                     )
                     top_filters = [0]
 
-                for filt in top_filters:
+                for position, filt in enumerate(top_filters):
                     # Create per-filter folder under the layer
+                    # Determine rank position (0-based) if ranking exists
+                    try:
+                        if 'rank_map' in locals():
+                            rank_pos = int(rank_map.get(int(filt), position))
+                        else:
+                            rank_pos = position
+                    except Exception:
+                        rank_pos = position
+                    # Keep folder stable by filter index (no rank), so images across samples land together
                     filter_dir = layer_dir / f"filter_{int(filt)}"
                     filter_dir.mkdir(parents=True, exist_ok=True)
                     for iters in iterations_list:
@@ -566,6 +579,8 @@ def main():
                                             "filter_idx": int(filt),
                                             "sample_idx": int(sample_idx),
                                             "dataset_name": str(ds_tag),
+                                            "rank_within_layer": int(rank_pos),
+                                            "total_filters_in_layer": int(getattr(target_layer, 'out_channels', 0)),
                                             "ground_truth_xy": (
                                                 float(coords[0].item()) if hasattr(coords[0], "item") else float(coords[0]),
                                                 float(coords[1].item()) if hasattr(coords[1], "item") else float(coords[1]),
