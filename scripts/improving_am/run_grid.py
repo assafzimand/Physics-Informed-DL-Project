@@ -493,46 +493,51 @@ def main():
                     # Highest priority: explicit per-layer filters mapping
                     if layer_internal_idx in filters_by_layer:
                         top_filters = filters_by_layer[layer_internal_idx]
-                    elif not (
+                    else:
+                        # If asking for all filters, bypass ranking and take 0..C-1 so filters are consistent across samples
+                        num_filters = getattr(target_layer, "out_channels", None)
+                        if num_filters is not None and top_k_filters >= int(num_filters):
+                            top_filters = list(range(int(num_filters)))
+                        elif not (
                         isinstance(filter_idx_cfg, str)
                         and filter_idx_cfg.lower() == "auto"
-                    ) and not (isinstance(filter_idx_cfg, int) and filter_idx_cfg < 0):
-                        top_filters = [int(filter_idx_cfg)]
-                    else:
-                        with torch.no_grad():
-                            norm_sample = (init_tensor - wave_mean) / wave_std
-                            activations: Dict[str, torch.Tensor] = {}
+                        ) and not (isinstance(filter_idx_cfg, int) and filter_idx_cfg < 0):
+                            top_filters = [int(filter_idx_cfg)]
+                        else:
+                            with torch.no_grad():
+                                norm_sample = (init_tensor - wave_mean) / wave_std
+                                activations: Dict[str, torch.Tensor] = {}
 
-                            def hook_fn(m, i, o):
-                                activations["t"] = o.detach()
+                                def hook_fn(m, i, o):
+                                    activations["t"] = o.detach()
 
-                            h = target_layer.register_forward_hook(hook_fn)
-                            _ = model(norm_sample)
-                            h.remove()
-                            layer_out = activations.get("t")
-                            if layer_out is None:
-                                raise RuntimeError(
-                                    "Failed to capture activations for ranking"
+                                h = target_layer.register_forward_hook(hook_fn)
+                                _ = model(norm_sample)
+                                h.remove()
+                                layer_out = activations.get("t")
+                                if layer_out is None:
+                                    raise RuntimeError(
+                                        "Failed to capture activations for ranking"
+                                    )
+                                if act == "mean_abs":
+                                    scores = layer_out.abs().mean(dim=(0, 2, 3))
+                                elif act == "mean":
+                                    scores = layer_out.mean(dim=(0, 2, 3))
+                                elif act == "l2":
+                                    scores = (
+                                        layer_out.pow(2).sum(dim=(2, 3)).sqrt()
+                                    ).mean(dim=0)
+                                elif act == "post_relu_mean":
+                                    scores = torch.relu(layer_out).mean(dim=(0, 2, 3))
+                                else:
+                                    raise ValueError(
+                                        f"Unsupported activation_mode for ranking: {act}"
+                                    )
+                                top_filters = (
+                                    torch.argsort(scores, descending=True)[:top_k_filters]
+                                    .cpu()
+                                    .tolist()
                                 )
-                            if act == "mean_abs":
-                                scores = layer_out.abs().mean(dim=(0, 2, 3))
-                            elif act == "mean":
-                                scores = layer_out.mean(dim=(0, 2, 3))
-                            elif act == "l2":
-                                scores = (layer_out.pow(2).sum(dim=(2, 3)).sqrt()).mean(
-                                    dim=0
-                                )
-                            elif act == "post_relu_mean":
-                                scores = torch.relu(layer_out).mean(dim=(0, 2, 3))
-                            else:
-                                raise ValueError(
-                                    f"Unsupported activation_mode for ranking: {act}"
-                                )
-                            top_filters = (
-                                torch.argsort(scores, descending=True)[:top_k_filters]
-                                .cpu()
-                                .tolist()
-                            )
                 except Exception as e:
                     print(
                         f"WARNING: Ranking failed for layer {layer_internal_idx} (act={act}): {e}"

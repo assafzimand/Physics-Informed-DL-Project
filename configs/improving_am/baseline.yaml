@@ -17,7 +17,7 @@ selection:
   # IMPORTANT: layer_indices are 0-based positions in the conv_layers list
   # (after filtering skip/projection convs), not internal named_modules ids.
   layer_indices: [0]      # e.g., 0 is the first Conv2d encountered, up to 16
-  top_k_filters: 2
+  top_k_filters: 32
   filters_by_layer: {}
 
 # Grid
