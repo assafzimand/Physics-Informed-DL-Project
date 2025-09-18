@@ -406,7 +406,7 @@ class SimpleActivationMaximizer:
             optimizer.step()
 
             # Progress reporting
-            if i % 100 == 0 or i == iterations - 1:
+            if i % 10 == 0 or i == iterations - 1:
                 print(
                     f"   Step {i:4d}: Loss={total_loss.item():.4f}, "
                     f"Target={-target_loss.item():.2f}, "
